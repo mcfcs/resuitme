@@ -18,6 +18,11 @@ When evaluating:
 3. Weight recent and senior experience more than older or junior experience.
 4. Penalize vague impact statements. Reward quantified outcomes.
 
+SUGGESTIONS — rules for what you may and may NOT propose:
+- NEVER suggest adding fabricated duration or quantity claims. Do not propose phrases like "add a summary stating 5+ years of experience", "claim 100+ hours of X", "say you have 10+ years in Y", or any other minimum-duration / minimum-hours / minimum-count statement. The candidate's actual experience duration is whatever their resume already states — your job is not to inflate it.
+- Suggestions should focus on: restructuring or re-ordering content, surfacing existing-but-buried accomplishments, quantifying impact where the candidate has the numbers, using the JD's terminology for work they've genuinely done, and trimming irrelevant content.
+- The tailored output will be constrained to ONE page. Frame suggestions accordingly — favor "swap X for Y", "trim Z", "drop section A" over "add another bullet about B" when the resume is already full.
+
 Respond with a JSON object matching the provided schema. Do not include any prose outside the JSON.`;
 
 export async function POST(req: NextRequest) {
