@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { Analysis } from "@/lib/types";
+import type { Analysis, MustIncludePick } from "@/lib/types";
 import { loadProfile, type Profile } from "@/lib/profile";
 import {
   computeOnePageBudget,
   isWithinBudget,
+  MAX_TRIM_PASSES,
   visibleChars,
 } from "@/lib/latex";
 
@@ -125,17 +126,35 @@ export default function Home() {
           }),
         });
 
-      // Pass 1 — tailor with the budget as a hard ceiling.
-      let res = await callTailor();
-      let data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Tailoring failed");
-      let tailored = data.latex as string;
-      let chars = visibleChars(tailored);
-      let iterations = 1;
-      let cutsApplied: string[] = [];
+      // Multi-pass tailor + verify/trim loop. Stop early when under budget,
+      // otherwise keep applying fresh cuts until MAX_TRIM_PASSES.
+      let tailored = "";
+      let chars = 0;
+      let iterations = 0;
+      let allCutsApplied: string[] = [];
+      let currentCuts: string[] | undefined = undefined;
 
-      // Verify and trim if we overshot the budget.
-      if (!isWithinBudget(chars, budget)) {
+      while (iterations < MAX_TRIM_PASSES) {
+        setBusy(iterations === 0 ? "tailor" : "trim");
+        const res = await callTailor(currentCuts);
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(
+            data.error ?? (iterations === 0 ? "Tailoring failed" : "Trim pass failed"),
+          );
+        }
+        tailored = data.latex as string;
+        chars = visibleChars(tailored);
+        iterations += 1;
+
+        // Under budget — done.
+        if (chars <= budget) break;
+        // Out of passes — surface what we have.
+        if (iterations >= MAX_TRIM_PASSES) break;
+        // Borderline overshoot (within tight tolerance) — don't burn another trim pass.
+        if (isWithinBudget(chars, budget, 0.005)) break;
+
+        // Ask the verifier for fresh cuts against THIS latest LaTeX.
         setBusy("verify");
         const verifyRes = await fetch("/api/tailor/verify", {
           method: "POST",
@@ -150,19 +169,14 @@ export default function Home() {
         });
         const verifyData = await verifyRes.json();
         if (
-          verifyRes.ok &&
-          Array.isArray(verifyData.suggestedCuts) &&
-          verifyData.suggestedCuts.length > 0
+          !verifyRes.ok ||
+          !Array.isArray(verifyData.suggestedCuts) ||
+          verifyData.suggestedCuts.length === 0
         ) {
-          cutsApplied = verifyData.suggestedCuts;
-          setBusy("trim");
-          res = await callTailor(cutsApplied);
-          data = await res.json();
-          if (!res.ok) throw new Error(data.error ?? "Trim pass failed");
-          tailored = data.latex;
-          chars = visibleChars(tailored);
-          iterations = 2;
+          break;
         }
+        currentCuts = verifyData.suggestedCuts as string[];
+        allCutsApplied = [...allCutsApplied, ...currentCuts];
       }
 
       setTailoredLatex(tailored);
@@ -172,8 +186,9 @@ export default function Home() {
         tailoredChars: chars,
         capped,
         iterations,
-        cutsApplied,
-        fits: isWithinBudget(chars, budget),
+        cutsApplied: allCutsApplied,
+        // Strict: must be under budget (no tolerance) to claim "fits".
+        fits: chars <= budget,
       });
 
       // Auto-reanalyze the (possibly trimmed) tailored version.
@@ -559,18 +574,20 @@ export default function Home() {
 
 function BudgetBadge({ info }: { info: BudgetInfo }) {
   const pct = info.budget > 0 ? info.tailoredChars / info.budget : 0;
+  const overBy = info.tailoredChars - info.budget;
   const tone = info.fits
     ? "border-sage-500/40 bg-sage-500/10 text-sage-300"
-    : "border-orange-500/40 bg-orange-500/10 text-orange-200";
-  const icon = info.fits ? "✓" : "!";
+    : "border-red-500/50 bg-red-500/15 text-red-200";
+  const icon = info.fits ? "✓" : "⚠";
   return (
     <div
       title={
-        `Budget ${info.budget} visible chars (one-page heuristic)\n` +
+        `Budget ${info.budget} visible chars (one-page heuristic, with 5% safety margin)\n` +
         `Tailored ${info.tailoredChars} chars (${Math.round(pct * 100)}%)\n` +
         (info.iterations > 1
           ? `Trimmed in ${info.iterations} passes${info.cutsApplied.length ? ` — ${info.cutsApplied.length} cuts applied` : ""}`
-          : "Fit on the first pass")
+          : "Fit on the first pass") +
+        (info.fits ? "" : `\nOVER BY ${overBy} chars — likely overflows to a second page`)
       }
       className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-mono text-xs tabular-nums ${tone}`}
     >
@@ -581,11 +598,13 @@ function BudgetBadge({ info }: { info: BudgetInfo }) {
         {info.budget.toLocaleString()}
       </span>
       <span className="opacity-50">·</span>
-      <span>{info.fits ? "fits 1 page" : "slightly over"}</span>
+      <span>
+        {info.fits ? "fits 1 page" : `over by ${overBy.toLocaleString()}`}
+      </span>
       {info.iterations > 1 && (
         <>
           <span className="opacity-50">·</span>
-          <span>trimmed</span>
+          <span>{info.iterations} passes</span>
         </>
       )}
     </div>
@@ -618,6 +637,10 @@ function AnalysisCard({ analysis }: { analysis: Analysis }) {
         “{analysis.verdict}”
       </p>
 
+      {analysis.must_include?.length > 0 && (
+        <MustIncludeBlock picks={analysis.must_include} />
+      )}
+
       <div className="grid md:grid-cols-2 gap-6">
         <Block title="Strengths" items={analysis.strengths} tone="positive" />
         <Block title="Gaps" items={analysis.gaps} tone="negative" />
@@ -637,6 +660,59 @@ function AnalysisCard({ analysis }: { analysis: Analysis }) {
           tone="negative"
         />
       </div>
+    </div>
+  );
+}
+
+const CATEGORY_STYLE: Record<MustIncludePick["category"], string> = {
+  experience: "bg-marigold/15 text-marigold border-marigold/30",
+  project: "bg-sage-500/15 text-sage-300 border-sage-500/30",
+  skill: "bg-sky-500/15 text-sky-200 border-sky-500/30",
+  education: "bg-purple-500/15 text-purple-200 border-purple-500/30",
+  thesis: "bg-purple-500/15 text-purple-200 border-purple-500/30",
+  award: "bg-yellow-500/15 text-yellow-200 border-yellow-500/30",
+  publication: "bg-sky-500/15 text-sky-200 border-sky-500/30",
+  other: "bg-paper/10 text-paper/70 border-paper/20",
+};
+
+function MustIncludeBlock({ picks }: { picks: MustIncludePick[] }) {
+  return (
+    <div className="rounded-md border border-marigold/30 bg-marigold/[0.05] p-5">
+      <div className="flex items-baseline justify-between gap-3 mb-3 flex-wrap">
+        <h3 className="font-display text-lg text-paper/95">
+          Top picks for this résumé
+        </h3>
+        <span className="eyebrow text-marigold">
+          {picks.length} highest-impact items
+        </span>
+      </div>
+      <ol className="space-y-3">
+        {picks.map((p, i) => (
+          <li
+            key={i}
+            className="flex gap-3 items-start rounded border border-paper/5 bg-ink/30 px-3.5 py-3"
+          >
+            <span className="font-mono text-xs text-paper/40 tabular-nums shrink-0 mt-0.5">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span
+                  className={`inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-[1px] rounded border ${CATEGORY_STYLE[p.category] ?? CATEGORY_STYLE.other}`}
+                >
+                  {p.category}
+                </span>
+                <span className="text-sm font-medium text-paper/95">
+                  {p.item}
+                </span>
+              </div>
+              <p className="text-sm text-paper/65 mt-1 leading-relaxed">
+                {p.why}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

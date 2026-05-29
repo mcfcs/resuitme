@@ -3,9 +3,21 @@
 // original resume is longer than one page.
 export const MAX_ONE_PAGE_CHARS = 4500;
 
-// Slack tolerance — if the tailored output is within this fraction of the
-// budget, we don't bother running the trim pass.
-export const BUDGET_TOLERANCE = 0.05;
+// Safety margin baked into the budget we send to the model. The measured
+// visibleChars of the template approximates one-page capacity, but real LaTeX
+// rendering can overflow on borderline counts. By telling the model the
+// budget is 95% of measured, even a small model overshoot stays well under
+// real one-page capacity.
+export const SAFETY_MARGIN = 0.95;
+
+// Slack tolerance — only skip the trim pass if the overshoot is this small.
+// Tight: even ~2-3% overshoot tends to push real LaTeX onto a second page.
+export const BUDGET_TOLERANCE = 0.005;
+
+// Maximum number of build/tailor + verify+trim cycles before we give up and
+// surface the result as "over budget" so the user can decide what to do.
+// Bumped to 4 to give the loop one more shot at converging.
+export const MAX_TRIM_PASSES = 4;
 
 /**
  * Extract the rough visible-text content from a LaTeX source, stripping
@@ -59,9 +71,9 @@ export function visibleWords(latex: string): number {
 
 /**
  * Compute the visible-char budget for a tailored resume given the original.
- * If the original fits one page, we keep that length as the budget so
- * tailoring stays at parity. If the original is longer than one page, we
- * cap at MAX_ONE_PAGE_CHARS to force the trim.
+ * Applies SAFETY_MARGIN so the model has tighter constraints than the actual
+ * one-page capacity — even if the model overshoots its target, the real
+ * output still fits.
  */
 export function computeOnePageBudget(originalLatex: string): {
   budget: number;
@@ -70,7 +82,8 @@ export function computeOnePageBudget(originalLatex: string): {
 } {
   const originalChars = visibleChars(originalLatex);
   const capped = originalChars > MAX_ONE_PAGE_CHARS;
-  const budget = capped ? MAX_ONE_PAGE_CHARS : originalChars;
+  const targetChars = capped ? MAX_ONE_PAGE_CHARS : originalChars;
+  const budget = Math.floor(targetChars * SAFETY_MARGIN);
   return { budget, originalChars, capped };
 }
 

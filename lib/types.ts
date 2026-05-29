@@ -1,9 +1,24 @@
+export type MustIncludePick = {
+  item: string;
+  category:
+    | "experience"
+    | "project"
+    | "skill"
+    | "education"
+    | "thesis"
+    | "award"
+    | "publication"
+    | "other";
+  why: string;
+};
+
 export type Analysis = {
   score: number;
   verdict: string;
   strengths: string[];
   gaps: string[];
   suggestions: string[];
+  must_include: MustIncludePick[];
   keyword_coverage: {
     matched: string[];
     missing: string[];
@@ -27,7 +42,7 @@ export const ANALYSIS_SCHEMA = {
       type: "array",
       items: { type: "string" },
       description:
-        "Bullet list (3-6 items) of the strongest matches between the resume and the JD.",
+        "Bullet list (3-6 items) of the strongest matches between the input and the JD.",
     },
     gaps: {
       type: "array",
@@ -39,7 +54,42 @@ export const ANALYSIS_SCHEMA = {
       type: "array",
       items: { type: "string" },
       description:
-        "Concrete, specific changes that would improve the resume's fit. 4-8 items.",
+        "Concrete, specific changes that would improve the fit. 4-8 items.",
+    },
+    must_include: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          item: {
+            type: "string",
+            description:
+              "Concise reference to the SPECIFIC item from the candidate's content — name actual experiences, projects, theses, awards, or technologies. Examples: 'aCount Sneaker Resale Platform', 'Senior Engineer role at Acme', 'Thesis: Context-Aware Sarcasm Detection', 'PyTorch + scikit-learn for ML pipelines'. Never generic categories.",
+          },
+          category: {
+            type: "string",
+            enum: [
+              "experience",
+              "project",
+              "skill",
+              "education",
+              "thesis",
+              "award",
+              "publication",
+              "other",
+            ],
+          },
+          why: {
+            type: "string",
+            description:
+              "One sentence (max ~25 words) on why this specific item is critical for THIS JD. Reference a JD requirement that it satisfies.",
+          },
+        },
+        required: ["item", "category", "why"],
+        additionalProperties: false,
+      },
+      description:
+        "Top 3-5 items from the candidate's content that absolutely must appear in the tailored résumé. Specific names, not generic categories. Ordered by impact (highest first).",
     },
     keyword_coverage: {
       type: "object",
@@ -47,13 +97,13 @@ export const ANALYSIS_SCHEMA = {
         matched: {
           type: "array",
           items: { type: "string" },
-          description: "Important JD keywords/skills present in the resume.",
+          description: "Important JD keywords/skills present in the input.",
         },
         missing: {
           type: "array",
           items: { type: "string" },
           description:
-            "Important JD keywords/skills missing from the resume.",
+            "Important JD keywords/skills missing from the input.",
         },
       },
       required: ["matched", "missing"],
@@ -66,6 +116,7 @@ export const ANALYSIS_SCHEMA = {
     "strengths",
     "gaps",
     "suggestions",
+    "must_include",
     "keyword_coverage",
   ],
   additionalProperties: false,
