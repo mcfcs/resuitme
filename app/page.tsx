@@ -188,26 +188,45 @@ export default function Home() {
     resume.trim().length > 50 && jobDescription.trim().length > 20;
 
   return (
-    <main className="min-h-screen px-6 py-10 md:py-16 max-w-6xl mx-auto">
-      <nav className="mb-8 flex items-center justify-between">
-        <div className="text-sm text-white/60">
-          Resuitme — tailor your resume to any job
-        </div>
+    <main className="min-h-screen px-6 py-8 md:py-12 max-w-6xl mx-auto">
+      <nav className="mb-12 flex items-center justify-between animate-fade-in">
+        <Link href="/" className="group flex items-baseline gap-0.5">
+          <span className="font-display text-2xl font-semibold tracking-tight">
+            Resuitme
+          </span>
+          <span className="font-display italic text-2xl text-marigold leading-none">
+            .
+          </span>
+        </Link>
         <Link
           href="/profile"
-          className="text-sm text-white/70 hover:text-white border border-white/15 px-3 py-1.5 rounded-md hover:bg-white/5 transition"
+          className="eyebrow text-paper/60 hover:text-marigold border-b border-paper/15 hover:border-marigold pb-1 transition-colors"
         >
           {profile?.updatedAt ? "Your profile →" : "Set up profile →"}
         </Link>
       </nav>
 
-      <header className="mb-10">
-        <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-          Tailor your resume
+      <header className="mb-14 max-w-3xl">
+        <div
+          className="eyebrow text-marigold mb-5 animate-rise-in"
+          style={{ animationDelay: "60ms" }}
+        >
+          Honest resume tailoring
+        </div>
+        <h1
+          className="font-display text-5xl md:text-7xl font-medium leading-[0.95] tracking-tight animate-rise-in"
+          style={{ animationDelay: "120ms" }}
+        >
+          Tailor your résumé,{" "}
+          <span className="italic text-marigold">truthfully.</span>
         </h1>
-        <p className="mt-2 text-white/60 max-w-2xl">
-          Paste your LaTeX resume and a job description. Get an honest rating,
-          then a tailored rewrite that only emphasizes skills you actually have.
+        <p
+          className="mt-6 text-lg text-paper/65 leading-relaxed max-w-xl animate-rise-in"
+          style={{ animationDelay: "220ms" }}
+        >
+          Paste your LaTeX résumé and a job description. Get an honest rating,
+          then a tailored rewrite that only emphasizes skills you{" "}
+          <em className="text-paper/90 not-italic font-medium">actually have</em>.
         </p>
       </header>
 
@@ -218,19 +237,22 @@ export default function Home() {
       )}
 
       {/* Input panel */}
-      <section className="grid md:grid-cols-2 gap-4 mb-6">
+      <section
+        className="grid md:grid-cols-2 gap-5 mb-6 animate-rise-in"
+        style={{ animationDelay: "320ms" }}
+      >
         <div className="flex flex-col">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-white/80">
-              Resume — LaTeX source
+          <div className="flex items-center justify-between mb-2.5">
+            <label className="eyebrow text-paper/55">
+              01 — Résumé · LaTeX source
             </label>
             {profile?.baseResumeLatex && (
               <button
                 onClick={loadBaseResume}
                 disabled={phase !== "input" && phase !== "analyzed"}
-                className="text-xs text-emerald-300 hover:text-emerald-200 underline underline-offset-2 disabled:opacity-40 disabled:no-underline"
+                className="text-xs text-sage-300 hover:text-sage-200 underline underline-offset-4 disabled:opacity-40 disabled:no-underline"
               >
-                Use my base resume
+                Use my base résumé
               </button>
             )}
           </div>
@@ -239,59 +261,59 @@ export default function Home() {
             onChange={(e) => setResume(e.target.value)}
             disabled={phase !== "input" && phase !== "analyzed"}
             placeholder={`\\documentclass{article}\n\\begin{document}\n...\n\\end{document}`}
-            className="font-mono text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-2 h-72 md:h-96 resize-y focus:outline-none focus:border-white/30 disabled:opacity-60"
+            className="font-mono text-sm bg-ink-raised/60 border border-paper/10 rounded-md px-4 py-3 h-72 md:h-96 resize-y focus:outline-none focus:border-marigold/60 focus:ring-1 focus:ring-marigold/30 disabled:opacity-60 transition-colors placeholder:text-paper/25"
           />
-          <div className="mt-1 text-xs text-white/40">
+          <div className="mt-1.5 text-xs text-paper/40 tabular-nums">
             {resume.length.toLocaleString()} chars
           </div>
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-medium mb-2 text-white/80">
-            Job description
+          <label className="eyebrow text-paper/55 mb-2.5">
+            02 — Job description
           </label>
           <textarea
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
             disabled={phase !== "input" && phase !== "analyzed"}
-            placeholder="Paste the full job description here..."
-            className="text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-2 h-72 md:h-96 resize-y focus:outline-none focus:border-white/30 disabled:opacity-60"
+            placeholder="Paste the full job description here…"
+            className="text-sm leading-relaxed bg-ink-raised/60 border border-paper/10 rounded-md px-4 py-3 h-72 md:h-96 resize-y focus:outline-none focus:border-marigold/60 focus:ring-1 focus:ring-marigold/30 disabled:opacity-60 transition-colors placeholder:text-paper/25"
           />
-          <div className="mt-1 text-xs text-white/40">
+          <div className="mt-1.5 text-xs text-paper/40 tabular-nums">
             {jobDescription.length.toLocaleString()} chars
           </div>
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center gap-3 mb-10">
+      <div className="flex flex-wrap items-center gap-3 mb-16">
         <button
           onClick={analyzeOriginal}
           disabled={!canAnalyze || busy !== null}
-          className="px-5 py-2.5 rounded-lg bg-white text-black font-medium text-sm hover:bg-white/90 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          className="group px-6 py-3 rounded-md bg-marigold text-ink font-semibold text-sm hover:bg-marigold-deep disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-[0_2px_20px_-6px_rgba(232,168,56,0.6)] hover:shadow-[0_4px_28px_-6px_rgba(232,168,56,0.8)]"
         >
-          {busy === "analyze" ? "Analyzing…" : "Analyze resume"}
+          {busy === "analyze" ? "Analyzing…" : "Analyze résumé"}
         </button>
         {phase !== "input" && (
           <button
             onClick={reset}
             disabled={busy !== null}
-            className="px-4 py-2.5 rounded-lg border border-white/15 text-sm text-white/70 hover:bg-white/5 disabled:opacity-40 transition"
+            className="px-5 py-3 rounded-md border border-paper/15 text-sm text-paper/70 hover:bg-paper/5 hover:border-paper/30 disabled:opacity-40 transition"
           >
             Start over
           </button>
         )}
         {!canAnalyze && (
-          <span className="text-xs text-white/40">
-            Paste a resume and a job description to begin.
+          <span className="text-xs text-paper/40 italic font-display">
+            Paste a résumé and a job description to begin.
           </span>
         )}
       </div>
 
       {/* Original analysis */}
       {originalAnalysis && (
-        <section className="mb-10">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-3">
-            Original resume rating
+        <section className="mb-14 animate-rise-in">
+          <h2 className="font-display text-3xl font-medium mb-5 flex items-center gap-4 flex-wrap">
+            Original rating
             <ScorePill score={originalAnalysis.score} />
           </h2>
           <AnalysisCard analysis={originalAnalysis} />
@@ -314,11 +336,11 @@ export default function Home() {
                   <button
                     onClick={tailor}
                     disabled={busy !== null}
-                    className="px-5 py-2.5 rounded-lg bg-emerald-500 text-black font-medium text-sm hover:bg-emerald-400 disabled:opacity-40 transition"
+                    className="px-6 py-3 rounded-md bg-sage-500 text-ink font-semibold text-sm hover:bg-sage-400 disabled:opacity-40 transition"
                   >
-                    Tailor my resume to this job →
+                    Tailor my résumé to this job →
                   </button>
-                  <span className="text-xs text-white/40">
+                  <span className="text-xs text-paper/40 italic font-display">
                     No keyword gaps — straightforward tailor.
                   </span>
                 </div>
@@ -330,13 +352,18 @@ export default function Home() {
 
       {/* Tailoring state */}
       {phase === "tailoring" && (
-        <section className="mb-10 rounded-lg border border-white/10 p-6 text-center">
-          <div className="text-sm text-white/70">
+        <section className="mb-14 rounded-md border border-marigold/20 bg-ink-raised/40 p-10 text-center animate-fade-in">
+          <div className="flex justify-center gap-1.5 mb-5" aria-hidden>
+            <span className="h-2 w-2 rounded-full bg-marigold animate-bounce [animation-delay:-0.3s]" />
+            <span className="h-2 w-2 rounded-full bg-marigold animate-bounce [animation-delay:-0.15s]" />
+            <span className="h-2 w-2 rounded-full bg-marigold animate-bounce" />
+          </div>
+          <div className="font-display text-xl text-paper/85">
             {busy === "tailor"
-              ? "Tailoring your resume…"
+              ? "Tailoring your résumé…"
               : "Re-analyzing the tailored version…"}
           </div>
-          <div className="mt-3 text-xs text-white/40">
+          <div className="mt-2 text-xs text-paper/40">
             This typically takes 30–60 seconds.
           </div>
         </section>
@@ -345,18 +372,18 @@ export default function Home() {
       {/* Tailored result */}
       {phase === "tailored" && tailoredAnalysis && (
         <>
-          <section className="mb-10">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-3">
-              Tailored resume rating
+          <section className="mb-14 animate-rise-in">
+            <h2 className="font-display text-3xl font-medium mb-5 flex items-center gap-4 flex-wrap">
+              Tailored rating
               <ScorePill score={tailoredAnalysis.score} />
               {originalAnalysis && (
-                <span className="text-sm font-normal text-white/50">
+                <span className="text-sm font-normal text-paper/50">
                   was{" "}
-                  <span className="text-white/70">
+                  <span className="text-paper/70">
                     {originalAnalysis.score}
                   </span>
                   {tailoredAnalysis.score > originalAnalysis.score && (
-                    <span className="ml-2 text-emerald-400">
+                    <span className="ml-2 text-sage-400">
                       +{tailoredAnalysis.score - originalAnalysis.score}
                     </span>
                   )}
@@ -371,36 +398,38 @@ export default function Home() {
             <AnalysisCard analysis={tailoredAnalysis} />
           </section>
 
-          <section className="mb-10">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <h2 className="text-xl font-semibold">Tailored LaTeX</h2>
+          <section className="mb-14 animate-rise-in">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <h2 className="font-display text-3xl font-medium">
+                Tailored LaTeX
+              </h2>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={copyLatex}
-                  className="px-3 py-1.5 rounded-md border border-white/15 text-xs hover:bg-white/5 transition"
+                  className="px-3 py-1.5 rounded-md border border-paper/15 text-xs hover:bg-paper/5 hover:border-paper/30 transition"
                 >
-                  {copied ? "Copied!" : "Copy"}
+                  {copied ? "Copied ✓" : "Copy"}
                 </button>
                 <button
                   onClick={downloadLatex}
-                  className="px-3 py-1.5 rounded-md border border-white/15 text-xs hover:bg-white/5 transition"
+                  className="px-3 py-1.5 rounded-md border border-paper/15 text-xs hover:bg-paper/5 hover:border-paper/30 transition"
                 >
                   Download .tex
                 </button>
                 <button
                   onClick={() => openInOverleaf(tailoredLatex)}
-                  className="px-3 py-1.5 rounded-md bg-emerald-500 text-black text-xs font-medium hover:bg-emerald-400 transition"
+                  className="px-3 py-1.5 rounded-md bg-sage-500 text-ink text-xs font-semibold hover:bg-sage-400 transition"
                   title="Opens overleaf.com in a new tab with your LaTeX pre-loaded for an instant PDF preview."
                 >
                   Open in Overleaf ↗
                 </button>
               </div>
             </div>
-            <pre className="font-mono text-xs bg-white/5 border border-white/10 rounded-lg p-4 max-h-[600px] overflow-auto whitespace-pre-wrap">
+            <pre className="font-mono text-xs bg-ink-raised/60 border border-paper/10 rounded-md p-5 max-h-[600px] overflow-auto whitespace-pre-wrap leading-relaxed">
               {tailoredLatex}
             </pre>
-            <p className="mt-2 text-xs text-white/40">
-              Click <span className="text-white/70">Open in Overleaf</span> for
+            <p className="mt-2.5 text-xs text-paper/40">
+              Click <span className="text-marigold">Open in Overleaf</span> for
               an instant PDF preview in a new tab — Overleaf renders LaTeX with
               full package support.
             </p>
@@ -408,10 +437,15 @@ export default function Home() {
         </>
       )}
 
-      <footer className="mt-16 pt-8 border-t border-white/10 text-xs text-white/40">
-        Powered by Claude. Your resume and job description are sent to
-        Anthropic for analysis and rewriting; nothing is stored on this server.
-        Profile data lives only in your browser's localStorage.
+      <footer className="mt-20 pt-8 border-t border-paper/10 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-paper/40">
+        <span className="font-display italic text-sm text-paper/55">
+          Resuitme
+        </span>
+        <span className="max-w-xl md:text-right leading-relaxed">
+          Powered by Claude. Your résumé and job description are sent to
+          Anthropic for analysis and rewriting; nothing is stored on this
+          server. Profile data lives only in your browser&apos;s localStorage.
+        </span>
       </footer>
     </main>
   );
@@ -420,34 +454,37 @@ export default function Home() {
 function ScorePill({ score }: { score: number }) {
   const color =
     score >= 80
-      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+      ? "bg-sage-500/15 text-sage-300 border-sage-500/40"
       : score >= 60
-        ? "bg-yellow-500/20 text-yellow-200 border-yellow-500/40"
+        ? "bg-marigold/15 text-marigold border-marigold/40"
         : score >= 40
-          ? "bg-orange-500/20 text-orange-200 border-orange-500/40"
-          : "bg-red-500/20 text-red-200 border-red-500/40";
+          ? "bg-orange-500/15 text-orange-200 border-orange-500/40"
+          : "bg-red-500/15 text-red-200 border-red-500/40";
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-full border text-sm font-semibold ${color}`}
+      className={`inline-flex items-baseline gap-0.5 px-3 py-1 rounded-full border font-mono text-sm font-medium tabular-nums ${color}`}
     >
-      {score}/100
+      <span className="text-base">{score}</span>
+      <span className="opacity-50 text-xs">/100</span>
     </span>
   );
 }
 
 function AnalysisCard({ analysis }: { analysis: Analysis }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.02] p-5 space-y-5">
-      <p className="text-white/85 italic">&quot;{analysis.verdict}&quot;</p>
+    <div className="rounded-md border border-paper/10 bg-ink-raised/40 p-6 space-y-6">
+      <p className="font-display text-xl md:text-2xl italic leading-snug text-paper/90 border-l-2 border-marigold/50 pl-4">
+        “{analysis.verdict}”
+      </p>
 
-      <div className="grid md:grid-cols-2 gap-5">
+      <div className="grid md:grid-cols-2 gap-6">
         <Block title="Strengths" items={analysis.strengths} tone="positive" />
         <Block title="Gaps" items={analysis.gaps} tone="negative" />
       </div>
 
       <Block title="Suggested edits" items={analysis.suggestions} />
 
-      <div className="grid md:grid-cols-2 gap-5 text-sm">
+      <div className="grid md:grid-cols-2 gap-6 text-sm pt-1">
         <KeywordRow
           label="Keywords matched"
           words={analysis.keyword_coverage.matched}
@@ -474,18 +511,18 @@ function Block({
 }) {
   const dot =
     tone === "positive"
-      ? "bg-emerald-400"
+      ? "bg-sage-400"
       : tone === "negative"
         ? "bg-red-400"
-        : "bg-white/40";
+        : "bg-paper/40";
   return (
     <div>
-      <h3 className="text-sm font-semibold text-white/80 mb-2">{title}</h3>
-      <ul className="space-y-1.5 text-sm text-white/75">
+      <h3 className="eyebrow text-paper/55 mb-3">{title}</h3>
+      <ul className="space-y-2 text-sm text-paper/80 leading-relaxed">
         {items.map((it, i) => (
-          <li key={i} className="flex gap-2">
+          <li key={i} className="flex gap-2.5">
             <span
-              className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${dot}`}
+              className={`mt-[7px] w-1.5 h-1.5 rounded-full shrink-0 ${dot}`}
             />
             <span>{it}</span>
           </li>
@@ -506,21 +543,19 @@ function KeywordRow({
 }) {
   const chip =
     tone === "positive"
-      ? "bg-emerald-500/15 text-emerald-200 border-emerald-500/30"
+      ? "bg-sage-500/15 text-sage-200 border-sage-500/30"
       : "bg-red-500/15 text-red-200 border-red-500/30";
   return (
     <div>
-      <div className="text-xs uppercase tracking-wide text-white/50 mb-2">
-        {label}
-      </div>
+      <div className="eyebrow text-paper/50 mb-2.5">{label}</div>
       {words.length === 0 ? (
-        <div className="text-xs text-white/40 italic">none</div>
+        <div className="text-xs text-paper/40 italic font-display">none</div>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {words.map((w, i) => (
             <span
               key={i}
-              className={`px-2 py-0.5 rounded-md border text-xs ${chip}`}
+              className={`px-2 py-0.5 rounded border font-mono text-xs ${chip}`}
             >
               {w}
             </span>
@@ -554,22 +589,24 @@ function HonestyPanel({
   for (const v of Object.values(honest)) counts[v]++;
 
   return (
-    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.04] p-5">
-      <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
+    <div className="rounded-md border border-sage-500/25 bg-sage-500/[0.05] p-6">
+      <div className="flex items-start justify-between flex-wrap gap-3 mb-5">
         <div>
-          <h3 className="text-base font-semibold text-emerald-200">
-            Be honest about these missing skills
+          <div className="eyebrow text-sage-400 mb-2">The honesty check</div>
+          <h3 className="font-display text-2xl font-medium text-paper">
+            Be honest about these gaps
           </h3>
-          <p className="text-sm text-white/70 mt-1 max-w-2xl">
-            For each keyword the JD wants but your resume doesn&apos;t mention,
-            tell us the truth. The tailored version will <em>never</em> claim
-            you have something you marked as &quot;I don&apos;t.&quot;
+          <p className="text-sm text-paper/65 mt-2 max-w-2xl leading-relaxed">
+            For each keyword the JD wants but your résumé doesn&apos;t mention,
+            tell us the truth. The tailored version will{" "}
+            <em className="text-paper/90 font-display">never</em> claim you have
+            something you marked as &quot;I don&apos;t.&quot;
           </p>
         </div>
         <div className="flex gap-1 shrink-0">
           <button
             onClick={() => setAllVerdicts("have")}
-            className="text-xs px-2 py-1 rounded border border-emerald-500/30 text-emerald-200 hover:bg-emerald-500/10"
+            className="text-xs px-2 py-1 rounded border border-sage-500/30 text-sage-200 hover:bg-sage-500/10"
           >
             All: have
           </button>
@@ -594,9 +631,11 @@ function HonestyPanel({
           return (
             <div
               key={kw}
-              className="flex items-center justify-between gap-3 py-1.5 px-3 rounded-md bg-black/30 border border-white/5"
+              className="flex items-center justify-between gap-3 py-2 px-3.5 rounded bg-ink/40 border border-paper/5 hover:border-paper/10 transition-colors"
             >
-              <span className="text-sm text-white/90 truncate">{kw}</span>
+              <span className="font-mono text-sm text-paper/90 truncate">
+                {kw}
+              </span>
               <div className="flex gap-1 shrink-0">
                 <VerdictButton
                   active={v === "have"}
@@ -625,28 +664,28 @@ function HonestyPanel({
         })}
       </div>
 
-      <div className="mb-4">
-        <label className="text-xs uppercase tracking-wide text-white/50 mb-1.5 block">
+      <div className="mb-5">
+        <label className="eyebrow text-paper/50 mb-2 block">
           Notes about your experience (optional)
         </label>
         <textarea
           value={honestNotes}
           onChange={(e) => setHonestNotes(e.target.value)}
           placeholder={`e.g. "I've used Postgres heavily but never DynamoDB" or "Familiar with Kubernetes concepts, never deployed one in production"`}
-          className="w-full text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-2 h-24 resize-y focus:outline-none focus:border-white/30"
+          className="w-full text-sm bg-ink/40 border border-paper/10 rounded-md px-3.5 py-2.5 h-24 resize-y focus:outline-none focus:border-marigold/50 focus:ring-1 focus:ring-marigold/25 transition-colors placeholder:text-paper/25"
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-xs text-white/50">
-          <span className="text-emerald-300">{counts.have} have</span> ·{" "}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+        <div className="font-mono text-xs text-paper/50 tabular-nums">
+          <span className="text-sage-300">{counts.have} have</span> ·{" "}
           <span className="text-yellow-200">{counts.partial} partial</span> ·{" "}
           <span className="text-red-300">{counts.none} skip</span>
         </div>
         <button
           onClick={onTailor}
           disabled={busy}
-          className="px-5 py-2.5 rounded-lg bg-emerald-500 text-black font-medium text-sm hover:bg-emerald-400 disabled:opacity-40 transition"
+          className="px-6 py-3 rounded-md bg-sage-500 text-ink font-semibold text-sm hover:bg-sage-400 disabled:opacity-40 transition shadow-[0_2px_18px_-6px_rgba(116,160,94,0.7)]"
         >
           Tailor honestly →
         </button>
@@ -669,14 +708,14 @@ function VerdictButton({
   const base = "text-xs px-2 py-1 rounded border transition whitespace-nowrap";
   const styles: Record<typeof tone, string> = {
     have: active
-      ? "bg-emerald-500/30 border-emerald-500/60 text-emerald-100"
-      : "border-white/10 text-white/50 hover:border-emerald-500/40 hover:text-emerald-200",
+      ? "bg-sage-500/30 border-sage-500/60 text-sage-100"
+      : "border-paper/10 text-paper/50 hover:border-sage-500/40 hover:text-sage-200",
     partial: active
       ? "bg-yellow-500/25 border-yellow-500/60 text-yellow-100"
-      : "border-white/10 text-white/50 hover:border-yellow-500/40 hover:text-yellow-200",
+      : "border-paper/10 text-paper/50 hover:border-yellow-500/40 hover:text-yellow-200",
     none: active
       ? "bg-red-500/25 border-red-500/60 text-red-100"
-      : "border-white/10 text-white/50 hover:border-red-500/40 hover:text-red-200",
+      : "border-paper/10 text-paper/50 hover:border-red-500/40 hover:text-red-200",
   };
   return (
     <button onClick={onClick} className={`${base} ${styles[tone]}`}>

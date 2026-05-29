@@ -341,7 +341,7 @@ export default function ProfilePage() {
   if (!hydrated) {
     return (
       <main className="min-h-screen px-6 py-10 max-w-5xl mx-auto">
-        <div className="text-white/40 text-sm">Loading…</div>
+        <div className="text-paper/40 text-sm">Loading…</div>
       </main>
     );
   }
@@ -357,35 +357,49 @@ export default function ProfilePage() {
   if (profile.additionalSkills?.trim()) builtSources.push("notes");
 
   return (
-    <main className="min-h-screen px-6 py-10 md:py-16 max-w-5xl mx-auto">
-      <nav className="mb-8 flex items-center justify-between">
+    <main className="min-h-screen px-6 py-8 md:py-12 max-w-5xl mx-auto">
+      <nav className="mb-12 flex items-center justify-between animate-fade-in">
         <Link
           href="/"
-          className="text-sm text-white/60 hover:text-white transition"
+          className="eyebrow text-paper/60 hover:text-marigold border-b border-paper/15 hover:border-marigold pb-1 transition-colors"
         >
           ← Back to tailor
         </Link>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           {profile.updatedAt && (
-            <span className="text-xs text-white/40">
+            <span className="text-xs text-paper/40 tabular-nums">
               Last saved {new Date(profile.updatedAt).toLocaleString()}
             </span>
           )}
           <button
             onClick={reset}
-            className="text-xs text-white/50 hover:text-red-300 transition"
+            className="text-xs text-paper/50 hover:text-red-300 transition"
           >
             Clear profile
           </button>
         </div>
       </nav>
 
-      <header className="mb-10">
-        <h1 className="text-4xl font-bold tracking-tight">Your profile</h1>
-        <p className="mt-2 text-white/60 max-w-2xl">
-          Paste your base resume, base CV, and any extra skills. Resuitme merges
+      <header className="mb-14 max-w-3xl">
+        <div
+          className="eyebrow text-marigold mb-5 animate-rise-in"
+          style={{ animationDelay: "60ms" }}
+        >
+          Your source of truth
+        </div>
+        <h1
+          className="font-display text-5xl md:text-6xl font-medium leading-[0.95] tracking-tight animate-rise-in"
+          style={{ animationDelay: "120ms" }}
+        >
+          Your <span className="italic text-marigold">profile</span>
+        </h1>
+        <p
+          className="mt-6 text-lg text-paper/65 leading-relaxed max-w-xl animate-rise-in"
+          style={{ animationDelay: "220ms" }}
+        >
+          Paste your base résumé, base CV, and any extra skills. Resuitme merges
           them into one unified profile — deduplicating shared entries and
-          combining bullets where the resume and CV overlap.
+          combining bullets where the résumé and CV overlap.
         </p>
       </header>
 
@@ -411,10 +425,12 @@ export default function ProfilePage() {
         onFile={(f) => handleFile("cv", f)}
       />
 
-      <section className="mb-10">
-        <h2 className="text-xl font-semibold mb-2">Additional skills & notes</h2>
-        <p className="text-sm text-white/60 mb-3">
-          Anything you have that isn&apos;t on your resume or CV. Tools,
+      <section className="mb-12">
+        <h2 className="font-display text-2xl font-medium mb-1.5">
+          Additional skills &amp; notes
+        </h2>
+        <p className="text-sm text-paper/60 mb-4 max-w-2xl leading-relaxed">
+          Anything you have that isn&apos;t on your résumé or CV. Tools,
           languages, projects, in-progress certifications. Free form. Merged in
           and tagged as &quot;notes&quot;.
         </p>
@@ -426,26 +442,27 @@ export default function ProfilePage() {
 - AWS Solutions Architect Associate (studying for the exam, no cert yet)
 - Currently learning Kubernetes
 - Conversational Spanish`}
-          className="w-full text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-2 h-40 resize-y focus:outline-none focus:border-white/30"
+          className="w-full text-sm bg-ink-raised/60 border border-paper/10 rounded-md px-4 py-3 h-40 resize-y focus:outline-none focus:border-marigold/60 focus:ring-1 focus:ring-marigold/30 transition-colors placeholder:text-paper/25"
         />
       </section>
 
       {/* AI-assisted CV addition */}
-      <section className="mb-10">
-        <div className="flex items-start justify-between flex-wrap gap-2 mb-2">
+      <section className="mb-12">
+        <div className="flex items-start justify-between flex-wrap gap-2 mb-3">
           <div>
-            <h2 className="text-xl font-semibold">Add to CV with AI</h2>
-            <p className="text-sm text-white/60 mt-1 max-w-2xl">
+            <div className="eyebrow text-marigold mb-2">Composed with Claude</div>
+            <h2 className="font-display text-2xl font-medium">Add to CV with AI</h2>
+            <p className="text-sm text-paper/60 mt-1.5 max-w-2xl leading-relaxed">
               Describe a new experience, project, or other entry. Claude polishes
               your input into clean CV-quality content, you review, and on
-              confirm it&apos;s inserted into your base CV LaTeX. Your resume
+              confirm it&apos;s inserted into your base CV LaTeX. Your résumé
               stays untouched — the CV is the full source of truth.
             </p>
           </div>
         </div>
 
         {!profile.baseCvLatex?.trim() ? (
-          <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 text-sm text-white/60">
+          <div className="rounded-md border border-paper/10 bg-ink-raised/40 p-4 text-sm text-paper/60">
             Paste a base CV above first — this feature inserts entries into your
             existing CV LaTeX, matching its formatting and macros.
           </div>
@@ -466,11 +483,11 @@ export default function ProfilePage() {
         )}
       </section>
 
-      <div className="flex flex-wrap items-center gap-3 sticky bottom-4 backdrop-blur bg-black/70 border border-white/10 rounded-lg px-4 py-3 z-10">
+      <div className="flex flex-wrap items-center gap-3 sticky bottom-4 backdrop-blur-md bg-ink/80 border border-paper/10 rounded-md px-4 py-3 z-10 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.8)]">
         <button
           onClick={build}
           disabled={busy !== null || !hasAnyInput}
-          className="px-5 py-2 rounded-lg bg-emerald-500 text-black font-medium text-sm hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          className="px-6 py-2.5 rounded-md bg-marigold text-ink font-semibold text-sm hover:bg-marigold-deep disabled:opacity-40 disabled:cursor-not-allowed transition shadow-[0_2px_18px_-6px_rgba(232,168,56,0.6)]"
         >
           {busy === "build"
             ? "Merging…"
@@ -481,14 +498,14 @@ export default function ProfilePage() {
         <button
           onClick={saveInputsOnly}
           disabled={busy !== null}
-          className="px-4 py-2 rounded-lg border border-white/15 text-sm text-white/80 hover:bg-white/5 disabled:opacity-40 transition"
+          className="px-5 py-2.5 rounded-md border border-paper/15 text-sm text-paper/80 hover:bg-paper/5 hover:border-paper/30 disabled:opacity-40 transition"
         >
           Save inputs only
         </button>
         {saved && (
-          <span className="text-xs text-emerald-300">Saved to this browser.</span>
+          <span className="text-xs text-sage-300">Saved to this browser.</span>
         )}
-        <span className="text-xs text-white/40 ml-auto hidden md:block">
+        <span className="text-xs text-paper/40 ml-auto hidden md:block italic font-display">
           Profile lives in your browser&apos;s localStorage.
         </span>
       </div>
@@ -496,11 +513,11 @@ export default function ProfilePage() {
       <div ref={profileViewRef} />
 
       {profile.parsed && (
-        <section className="mt-12">
-          <div className="flex items-baseline justify-between flex-wrap gap-3 mb-4">
-            <h2 className="text-2xl font-semibold">Merged profile</h2>
-            <div className="flex items-center gap-2 text-xs text-white/60">
-              <span>Built from:</span>
+        <section className="mt-16">
+          <div className="flex items-baseline justify-between flex-wrap gap-3 mb-5">
+            <h2 className="font-display text-3xl font-medium">Merged profile</h2>
+            <div className="flex items-center gap-2 text-xs text-paper/60">
+              <span className="eyebrow text-paper/45">Built from</span>
               {builtSources.map((s) => (
                 <SourceBadge key={s} source={s} />
               ))}
@@ -528,11 +545,13 @@ function DocumentBlock({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   return (
-    <section className="mb-10">
-      <div className="flex items-start justify-between flex-wrap gap-2 mb-2">
+    <section className="mb-12">
+      <div className="flex items-start justify-between flex-wrap gap-2 mb-3">
         <div>
-          <h2 className="text-xl font-semibold">{title}</h2>
-          <p className="text-sm text-white/60 mt-1 max-w-2xl">{description}</p>
+          <h2 className="font-display text-2xl font-medium">{title}</h2>
+          <p className="text-sm text-paper/60 mt-1.5 max-w-2xl leading-relaxed">
+            {description}
+          </p>
         </div>
         <div className="flex gap-2 shrink-0">
           <input
@@ -544,7 +563,7 @@ function DocumentBlock({
           />
           <button
             onClick={() => fileRef.current?.click()}
-            className="px-3 py-1.5 rounded-md border border-white/15 text-xs hover:bg-white/5 transition"
+            className="px-3 py-1.5 rounded-md border border-paper/15 text-xs hover:bg-paper/5 hover:border-marigold/50 hover:text-marigold transition"
           >
             Upload .tex
           </button>
@@ -555,9 +574,9 @@ function DocumentBlock({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Paste LaTeX source or upload a .tex file…"
-        className="w-full font-mono text-sm bg-white/5 border border-white/10 rounded-lg px-3 py-2 h-64 resize-y focus:outline-none focus:border-white/30"
+        className="w-full font-mono text-sm bg-ink-raised/60 border border-paper/10 rounded-md px-4 py-3 h-64 resize-y focus:outline-none focus:border-marigold/60 focus:ring-1 focus:ring-marigold/30 transition-colors placeholder:text-paper/25"
       />
-      <div className="text-xs text-white/40 mt-1">
+      <div className="text-xs text-paper/40 mt-1.5 tabular-nums">
         {value.length.toLocaleString()} chars
       </div>
     </section>
@@ -593,15 +612,13 @@ function AddToCvPanel({
   const canPolish = hasRequiredFields(section, rough);
 
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.02] p-5">
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <label className="text-xs uppercase tracking-wide text-white/50">
-          Add a new
-        </label>
+    <div className="rounded-md border border-paper/10 bg-ink-raised/40 p-6">
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <label className="eyebrow text-paper/50">Add a new</label>
         <select
           value={section}
           onChange={(e) => onSelectSection(e.target.value as PolishKind)}
-          className="text-sm bg-white/5 border border-white/15 rounded-md px-2 py-1.5 focus:outline-none focus:border-white/30"
+          className="text-sm bg-ink border border-paper/15 rounded-md px-3 py-1.5 focus:outline-none focus:border-marigold/60 transition-colors"
         >
           {(Object.keys(SECTION_LABELS) as PolishKind[]).map((k) => (
             <option key={k} value={k} className="bg-neutral-900">
@@ -637,11 +654,11 @@ function AddToCvPanel({
           <button
             onClick={onPolish}
             disabled={busy !== null || !canPolish}
-            className="px-4 py-2 rounded-md bg-white text-black text-sm font-medium hover:bg-white/90 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            className="px-4 py-2 rounded-md bg-marigold text-ink text-sm font-medium hover:bg-marigold-deep disabled:opacity-40 disabled:cursor-not-allowed transition"
           >
             {busy === "polish" ? "Polishing…" : "Generate polished version"}
           </button>
-          <span className="text-xs text-white/40">
+          <span className="text-xs text-paper/40">
             Claude rewrites your input into CV-quality content. You&apos;ll
             review before anything is added.
           </span>
@@ -655,7 +672,7 @@ function AddToCvPanel({
             <button
               onClick={onCommit}
               disabled={busy !== null}
-              className="px-4 py-2 rounded-md bg-emerald-500 text-black text-sm font-medium hover:bg-emerald-400 disabled:opacity-40 transition"
+              className="px-4 py-2 rounded-md bg-sage-500 text-ink text-sm font-medium hover:bg-sage-400 disabled:opacity-40 transition"
             >
               {busy === "insert"
                 ? "Inserting into CV…"
@@ -664,14 +681,14 @@ function AddToCvPanel({
             <button
               onClick={onPolish}
               disabled={busy !== null}
-              className="px-3 py-2 rounded-md border border-white/15 text-xs text-white/80 hover:bg-white/5 disabled:opacity-40 transition"
+              className="px-3 py-2 rounded-md border border-paper/15 text-xs text-paper/80 hover:bg-paper/5 disabled:opacity-40 transition"
             >
               {busy === "polish" ? "Regenerating…" : "Regenerate"}
             </button>
             <button
               onClick={onDiscardPolish}
               disabled={busy !== null}
-              className="px-3 py-2 rounded-md border border-white/10 text-xs text-white/60 hover:bg-white/5 disabled:opacity-40 transition"
+              className="px-3 py-2 rounded-md border border-paper/10 text-xs text-paper/60 hover:bg-paper/5 disabled:opacity-40 transition"
             >
               Discard
             </button>
@@ -680,7 +697,7 @@ function AddToCvPanel({
       )}
 
       {justAdded && (
-        <div className="mt-4 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+        <div className="mt-4 rounded-md border border-sage-500/30 bg-sage-500/10 px-3 py-2 text-xs text-sage-200">
           {justAdded}
         </div>
       )}
@@ -700,16 +717,16 @@ function Field({
   const isTextarea = config.type === "textarea";
   return (
     <label className="block">
-      <div className="text-xs uppercase tracking-wide text-white/50 mb-1">
+      <div className="eyebrow text-paper/50 mb-1.5">
         {config.label}
-        {config.required && <span className="text-red-300 ml-0.5">*</span>}
+        {config.required && <span className="text-marigold ml-0.5">*</span>}
       </div>
       {isTextarea ? (
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={config.placeholder}
-          className="w-full text-sm bg-white/5 border border-white/10 rounded-md px-3 py-2 h-28 resize-y focus:outline-none focus:border-white/30"
+          className="w-full text-sm bg-ink border border-paper/10 rounded-md px-3.5 py-2.5 h-28 resize-y focus:outline-none focus:border-marigold/60 focus:ring-1 focus:ring-marigold/30 transition-colors placeholder:text-paper/25"
         />
       ) : (
         <input
@@ -717,11 +734,11 @@ function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={config.placeholder}
-          className="w-full text-sm bg-white/5 border border-white/10 rounded-md px-3 py-2 focus:outline-none focus:border-white/30"
+          className="w-full text-sm bg-ink border border-paper/10 rounded-md px-3.5 py-2.5 focus:outline-none focus:border-marigold/60 focus:ring-1 focus:ring-marigold/30 transition-colors placeholder:text-paper/25"
         />
       )}
       {config.hint && (
-        <div className="mt-1 text-[11px] text-white/40">{config.hint}</div>
+        <div className="mt-1 text-[11px] text-paper/40">{config.hint}</div>
       )}
     </label>
   );
@@ -736,28 +753,30 @@ function PolishedPreview({
 }) {
   const p = data.polished as Record<string, unknown>;
   return (
-    <div className="rounded-md border border-emerald-500/30 bg-emerald-500/[0.04] p-4">
+    <div className="rounded-md border border-sage-500/30 bg-sage-500/[0.04] p-4">
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full border border-emerald-500/40 text-emerald-300">
+        <span className="eyebrow text-[10px] px-2 py-0.5 rounded-full border border-sage-500/40 text-sage-300">
           AI-polished preview
         </span>
-        <span className="text-xs text-white/60">{data.summary}</span>
+        <span className="text-xs text-paper/60 italic font-display">
+          {data.summary}
+        </span>
       </div>
 
       {kind === "experience" && (
         <div>
           <div className="flex flex-wrap items-baseline justify-between gap-1">
-            <div className="font-medium text-white/90">
+            <div className="font-medium text-paper/90">
               {String(p.role ?? "")}
             </div>
-            <div className="text-xs text-white/50">{String(p.dates ?? "")}</div>
+            <div className="text-xs text-paper/50">{String(p.dates ?? "")}</div>
           </div>
-          <div className="text-sm text-white/70">
+          <div className="text-sm text-paper/70">
             {String(p.company ?? "")}
             {p.location ? ` · ${String(p.location)}` : ""}
           </div>
           {Array.isArray(p.bullets) && (
-            <ul className="mt-2 space-y-1 text-sm text-white/85 list-disc list-outside pl-5">
+            <ul className="mt-2 space-y-1 text-sm text-paper/85 list-disc list-outside pl-5">
               {(p.bullets as string[]).map((b, i) => (
                 <li key={i}>{b}</li>
               ))}
@@ -768,9 +787,9 @@ function PolishedPreview({
 
       {kind === "project" && (
         <div>
-          <div className="font-medium text-white/90">{String(p.name ?? "")}</div>
+          <div className="font-medium text-paper/90">{String(p.name ?? "")}</div>
           {p.description ? (
-            <div className="text-sm text-white/70 mt-0.5">
+            <div className="text-sm text-paper/70 mt-0.5">
               {String(p.description)}
             </div>
           ) : null}
@@ -779,7 +798,7 @@ function PolishedPreview({
               {(p.tech as string[]).map((t, i) => (
                 <span
                   key={i}
-                  className="text-[11px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/70"
+                  className="text-[11px] px-1.5 py-0.5 rounded bg-paper/5 border border-paper/10 text-paper/70"
                 >
                   {t}
                 </span>
@@ -787,7 +806,7 @@ function PolishedPreview({
             </div>
           )}
           {Array.isArray(p.bullets) && (
-            <ul className="mt-2 space-y-1 text-sm text-white/85 list-disc list-outside pl-5">
+            <ul className="mt-2 space-y-1 text-sm text-paper/85 list-disc list-outside pl-5">
               {(p.bullets as string[]).map((b, i) => (
                 <li key={i}>{b}</li>
               ))}
@@ -799,17 +818,17 @@ function PolishedPreview({
       {kind === "education" && (
         <div>
           <div className="flex flex-wrap items-baseline justify-between gap-1">
-            <div className="font-medium text-white/90">
+            <div className="font-medium text-paper/90">
               {String(p.institution ?? "")}
             </div>
-            <div className="text-xs text-white/50">{String(p.dates ?? "")}</div>
+            <div className="text-xs text-paper/50">{String(p.dates ?? "")}</div>
           </div>
-          <div className="text-sm text-white/70">
+          <div className="text-sm text-paper/70">
             {[p.degree, p.field].filter(Boolean).map(String).join(" · ")}
             {p.location ? ` · ${String(p.location)}` : ""}
           </div>
           {Array.isArray(p.details) && (p.details as string[]).length > 0 && (
-            <ul className="mt-2 space-y-0.5 text-sm text-white/75 list-disc list-outside pl-5">
+            <ul className="mt-2 space-y-0.5 text-sm text-paper/75 list-disc list-outside pl-5">
               {(p.details as string[]).map((d, i) => (
                 <li key={i}>{d}</li>
               ))}
@@ -819,20 +838,20 @@ function PolishedPreview({
       )}
 
       {kind === "award" && (
-        <div className="text-sm text-white/85">
+        <div className="text-sm text-paper/85">
           <span className="font-medium">{String(p.name ?? "")}</span>
-          {p.year ? <span className="text-white/50"> · {String(p.year)}</span> : null}
+          {p.year ? <span className="text-paper/50"> · {String(p.year)}</span> : null}
           {p.description ? (
-            <div className="text-white/70 mt-1">{String(p.description)}</div>
+            <div className="text-paper/70 mt-1">{String(p.description)}</div>
           ) : null}
         </div>
       )}
 
       {kind === "publication" && (
-        <div className="text-sm text-white/85">
+        <div className="text-sm text-paper/85">
           <span className="font-medium">{String(p.title ?? "")}</span>
-          {p.venue ? <span className="text-white/60"> · {String(p.venue)}</span> : null}
-          {p.year ? <span className="text-white/50"> · {String(p.year)}</span> : null}
+          {p.venue ? <span className="text-paper/60"> · {String(p.venue)}</span> : null}
+          {p.year ? <span className="text-paper/50"> · {String(p.year)}</span> : null}
         </div>
       )}
     </div>
@@ -872,18 +891,18 @@ function SourceBadges({ sources }: { sources: Source[] }) {
 
 function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.02] p-5 space-y-6">
+    <div className="rounded-md border border-paper/10 bg-ink-raised/40 p-6 space-y-7">
       <div>
         {parsed.name && (
-          <h3 className="text-2xl font-semibold">{parsed.name}</h3>
+          <h3 className="font-display text-3xl font-medium">{parsed.name}</h3>
         )}
         {parsed.contact && (
-          <div className="mt-1 text-sm text-white/70 flex flex-wrap gap-x-4 gap-y-1">
+          <div className="mt-1 text-sm text-paper/70 flex flex-wrap gap-x-4 gap-y-1">
             {parsed.contact.email && <span>{parsed.contact.email}</span>}
             {parsed.contact.phone && <span>{parsed.contact.phone}</span>}
             {parsed.contact.location && <span>{parsed.contact.location}</span>}
             {parsed.contact.links?.map((l, i) => (
-              <span key={i} className="text-white/50">
+              <span key={i} className="text-paper/50">
                 {l}
               </span>
             ))}
@@ -893,7 +912,7 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
 
       {parsed.summary && (
         <Section title="Summary">
-          <p className="text-sm text-white/80">{parsed.summary}</p>
+          <p className="text-sm text-paper/80">{parsed.summary}</p>
         </Section>
       )}
 
@@ -903,21 +922,21 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
             {parsed.experience.map((e, i) => (
               <div
                 key={i}
-                className="rounded border border-white/10 bg-white/[0.02] p-3"
+                className="rounded border border-paper/10 bg-paper/[0.02] p-3"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-1">
-                  <div className="font-medium text-white/90">
+                  <div className="font-medium text-paper/90">
                     {e.role}
                     <SourceBadges sources={e.sources} />
                   </div>
-                  <div className="text-xs text-white/50">{e.dates}</div>
+                  <div className="text-xs text-paper/50">{e.dates}</div>
                 </div>
-                <div className="text-sm text-white/70">
+                <div className="text-sm text-paper/70">
                   {e.company}
                   {e.location ? ` · ${e.location}` : ""}
                 </div>
                 {e.bullets.length > 0 && (
-                  <ul className="mt-2 space-y-1 text-sm text-white/75 list-disc list-outside pl-5">
+                  <ul className="mt-2 space-y-1 text-sm text-paper/75 list-disc list-outside pl-5">
                     {e.bullets.map((b, j) => (
                       <li key={j}>{b}</li>
                     ))}
@@ -935,14 +954,14 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
             {parsed.projects.map((p, i) => (
               <div
                 key={i}
-                className="rounded border border-white/10 bg-white/[0.02] p-3"
+                className="rounded border border-paper/10 bg-paper/[0.02] p-3"
               >
-                <div className="font-medium text-white/90">
+                <div className="font-medium text-paper/90">
                   {p.name}
                   <SourceBadges sources={p.sources} />
                 </div>
                 {p.description && (
-                  <div className="text-sm text-white/70 mt-0.5">
+                  <div className="text-sm text-paper/70 mt-0.5">
                     {p.description}
                   </div>
                 )}
@@ -951,7 +970,7 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
                     {p.tech.map((t, j) => (
                       <span
                         key={j}
-                        className="text-[11px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/70"
+                        className="text-[11px] px-1.5 py-0.5 rounded bg-paper/5 border border-paper/10 text-paper/70"
                       >
                         {t}
                       </span>
@@ -959,7 +978,7 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
                   </div>
                 )}
                 {p.bullets.length > 0 && (
-                  <ul className="mt-2 space-y-1 text-sm text-white/75 list-disc list-outside pl-5">
+                  <ul className="mt-2 space-y-1 text-sm text-paper/75 list-disc list-outside pl-5">
                     {p.bullets.map((b, j) => (
                       <li key={j}>{b}</li>
                     ))}
@@ -977,20 +996,20 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
             {parsed.education.map((e, i) => (
               <div
                 key={i}
-                className="rounded border border-white/10 bg-white/[0.02] p-3"
+                className="rounded border border-paper/10 bg-paper/[0.02] p-3"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-1">
-                  <div className="font-medium text-white/90">
+                  <div className="font-medium text-paper/90">
                     {e.institution}
                     <SourceBadges sources={e.sources} />
                   </div>
-                  <div className="text-xs text-white/50">{e.dates}</div>
+                  <div className="text-xs text-paper/50">{e.dates}</div>
                 </div>
-                <div className="text-sm text-white/70">
+                <div className="text-sm text-paper/70">
                   {[e.degree, e.field].filter(Boolean).join(" · ")}
                 </div>
                 {e.details && e.details.length > 0 && (
-                  <ul className="mt-1 space-y-0.5 text-sm text-white/65 list-disc list-outside pl-5">
+                  <ul className="mt-1 space-y-0.5 text-sm text-paper/65 list-disc list-outside pl-5">
                     {e.details.map((d, j) => (
                       <li key={j}>{d}</li>
                     ))}
@@ -1008,14 +1027,14 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
             <div className="space-y-2">
               {parsed.skills.categories.map((c, i) => (
                 <div key={i} className="flex flex-wrap items-baseline gap-2">
-                  <span className="text-xs uppercase tracking-wide text-white/50 shrink-0">
+                  <span className="text-xs uppercase tracking-wide text-paper/50 shrink-0">
                     {c.name}
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {c.items.map((s, j) => (
                       <span
                         key={j}
-                        className="text-xs px-2 py-0.5 rounded bg-white/5 border border-white/10 text-white/80"
+                        className="text-xs px-2 py-0.5 rounded bg-paper/5 border border-paper/10 text-paper/80"
                       >
                         {s}
                       </span>
@@ -1029,7 +1048,7 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
               {parsed.skills.flat.map((s, i) => (
                 <span
                   key={i}
-                  className="text-xs px-2 py-0.5 rounded bg-white/5 border border-white/10 text-white/80"
+                  className="text-xs px-2 py-0.5 rounded bg-paper/5 border border-paper/10 text-paper/80"
                 >
                   {s}
                 </span>
@@ -1041,13 +1060,13 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
 
       {parsed.awards.length > 0 && (
         <Section title="Awards">
-          <ul className="space-y-1 text-sm text-white/75">
+          <ul className="space-y-1 text-sm text-paper/75">
             {parsed.awards.map((a, i) => (
               <li key={i}>
-                <span className="text-white/90">{a.name}</span>
-                {a.year && <span className="text-white/50"> · {a.year}</span>}
+                <span className="text-paper/90">{a.name}</span>
+                {a.year && <span className="text-paper/50"> · {a.year}</span>}
                 {a.description && (
-                  <span className="text-white/60"> — {a.description}</span>
+                  <span className="text-paper/60"> — {a.description}</span>
                 )}
                 <SourceBadges sources={a.sources} />
               </li>
@@ -1058,12 +1077,12 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
 
       {parsed.publications.length > 0 && (
         <Section title="Publications">
-          <ul className="space-y-1 text-sm text-white/75">
+          <ul className="space-y-1 text-sm text-paper/75">
             {parsed.publications.map((p, i) => (
               <li key={i}>
-                <span className="text-white/90">{p.title}</span>
-                {p.venue && <span className="text-white/60"> · {p.venue}</span>}
-                {p.year && <span className="text-white/50"> · {p.year}</span>}
+                <span className="text-paper/90">{p.title}</span>
+                {p.venue && <span className="text-paper/60"> · {p.venue}</span>}
+                {p.year && <span className="text-paper/50"> · {p.year}</span>}
                 <SourceBadges sources={p.sources} />
               </li>
             ))}
@@ -1083,7 +1102,9 @@ function Section({
 }) {
   return (
     <div>
-      <h4 className="text-sm font-semibold text-white/80 mb-2">{title}</h4>
+      <h4 className="font-display text-lg font-medium text-paper/90 mb-3 pb-1.5 border-b border-paper/10">
+        {title}
+      </h4>
       {children}
     </div>
   );
