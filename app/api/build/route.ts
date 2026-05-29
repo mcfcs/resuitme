@@ -7,19 +7,6 @@ import { getTemplate } from "@/lib/templates";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-// 3200 visible chars is approximately what fits on one LaTeX page with
-// standard margins and 11pt font (matches our built-in template). Used as a
-// server-side fallback when the client doesn't send a budget.
-const ONE_PAGE_DEFAULT_BUDGET = 3200;
-
-// Total compose attempts (initial + retries). After this many, we surface
-// the closest-to-budget version with a trimWarning flag.
-const MAX_BUILD_ATTEMPTS = 3;
-
-// How much over the overshoot we ask the cut generator to cover. Picking 30%
-// more buffer absorbs uneven model adherence to cuts.
-const CUT_OVERSHOOT_BUFFER = 1.3;
-
 export type HonestVerdict = "have" | "partial" | "none";
 export type HonestSignals = {
   perKeyword: Record<string, HonestVerdict>;
@@ -74,9 +61,10 @@ ONE-PAGE LENGTH CONSTRAINT — INVIOLABLE:
 - Your output's visible-character count MUST be ≤ VISIBLE_CHAR_BUDGET. Strict ≤. Not "approximately". Not "around". Strictly less-than-or-equal.
 - The character count is measured by stripping all \\commands, comments, %, and {} braces.
 - TARGET ~90% of the budget while composing — the headroom absorbs the imprecision of the visible-char count vs. real LaTeX rendering.
-- The server will count your visible characters after you respond using this exact method: strip all \\commands, comments (% to end of line), braces {}, then collapse whitespace. The result must be ≤ VISIBLE_CHAR_BUDGET. Design your output knowing this is measured mechanically, not estimated.
+- Self-meter as you write: after each section, mentally tally your visible-char count. If you're at 70% of budget before reaching Experience, you over-included earlier content — go back and CUT.
 - When uncertain: DROP A PROJECT, DROP A BULLET, DROP A SECTION. Never add an item once you're at 85% of budget.
 - It is FAR better to drop a moderately-relevant item than to ship a résumé that overshoots by even one bullet. Length compliance is non-negotiable and overrides any other instruction.
+- After each iteration of the user/assistant loop, an automated counter checks your output. Overshoot triggers automatic re-trim with stricter cuts. Save the round-trip — stay strictly under on the first attempt.
 
 EXPLICIT CUT INSTRUCTIONS — when the user message contains a "CUTS_TO_APPLY" block:
 1. Remove the listed item from your internal content pool entirely.
@@ -102,108 +90,6 @@ OUTPUT FORMAT:
 - Do NOT wrap the output in code fences. Do NOT include any prose, preamble, or explanation outside the LaTeX.
 - ZERO placeholder strings from the template (e.g. "Full Name", "Project Name", "Tech Stack", "Bullet describing scope...", "Institution Name", "Company or Organization") may appear in the output.`;
 
-// Server-side visible-char counter. Mirrors the method described in the
-// system prompt: strip comments, then \commands, then braces, then collapse
-// whitespace. This is what enforces the budget — not an estimate.
-function countVisibleChars(latex: string): number {
-  return latex
-    .replace(/%.*$/gm, "") // strip comments
-    .replace(/\\[a-zA-Z]+\*?/g, "") // strip \commands
-    .replace(/[{}]/g, "") // strip braces
-    .replace(/\s+/g, " ") // collapse whitespace
-    .trim().length;
-}
-
-// Strip macro decoration from a captured project heading argument so the cut
-// instruction reads cleanly (e.g. "\textbf{Bank Loan...} $|$ \emph{Python}"
-// becomes "Bank Loan... | Python").
-function cleanCaption(raw: string): string {
-  return raw
-    .replace(/\\textbf\s*\{([^}]*)\}/g, "$1")
-    .replace(/\\emph\s*\{([^}]*)\}/g, "$1")
-    .replace(/\\textit\s*\{([^}]*)\}/g, "$1")
-    .replace(/\\[a-zA-Z]+\*?/g, "")
-    .replace(/[{}$]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-// Scan latex for \resumeProjectHeading blocks. For each, estimate the visible
-// chars it contributes (heading + everything until the next heading or
-// \resumeSubHeadingListEnd).
-function extractProjects(
-  latex: string,
-): Array<{ name: string; chars: number }> {
-  const headingRegex = /\\resumeProjectHeading\s*\{([^}]+)\}/g;
-  const positions: Array<{ raw: string; start: number }> = [];
-  let m: RegExpExecArray | null;
-  while ((m = headingRegex.exec(latex)) !== null) {
-    positions.push({ raw: m[1], start: m.index });
-  }
-
-  return positions.map((pos, i) => {
-    const nextStart =
-      i + 1 < positions.length
-        ? positions[i + 1].start
-        : (() => {
-            const endIdx = latex.indexOf(
-              "\\resumeSubHeadingListEnd",
-              pos.start,
-            );
-            return endIdx >= 0 ? endIdx : latex.length;
-          })();
-    return {
-      name: cleanCaption(pos.raw) || "(unnamed project)",
-      chars: countVisibleChars(latex.slice(pos.start, nextStart)),
-    };
-  });
-}
-
-// Scan latex for \resumeItem bullets and return each one's text + char weight.
-function extractBullets(
-  latex: string,
-): Array<{ text: string; chars: number }> {
-  const regex = /\\resumeItem\s*\{([^}]+)\}/g;
-  const out: Array<{ text: string; chars: number }> = [];
-  let m: RegExpExecArray | null;
-  while ((m = regex.exec(latex)) !== null) {
-    const text = m[1].trim();
-    if (!text) continue;
-    out.push({ text, chars: countVisibleChars(text) });
-  }
-  return out;
-}
-
-// Greedy cut generator. Sorts projects + bullets by their visible-char weight
-// (largest first) and proposes drops until estimated savings cover the
-// overshoot with a 30% buffer. Project drops are preferred — they save more
-// per cut than bullet trims do.
-function generateCuts(latex: string, overshoot: number): string[] {
-  if (overshoot <= 0) return [];
-  const target = Math.ceil(overshoot * CUT_OVERSHOOT_BUFFER);
-
-  const projects = extractProjects(latex).sort((a, b) => b.chars - a.chars);
-  const bullets = extractBullets(latex).sort((a, b) => b.chars - a.chars);
-
-  const cuts: string[] = [];
-  let savings = 0;
-
-  for (const p of projects) {
-    if (savings >= target) break;
-    cuts.push(`Remove project: ${p.name} (saves ~${p.chars} chars)`);
-    savings += p.chars;
-  }
-
-  for (const b of bullets) {
-    if (savings >= target) break;
-    const preview = b.text.length > 60 ? `${b.text.slice(0, 60)}…` : b.text;
-    cuts.push(`Remove bullet: "${preview}" (saves ~${b.chars} chars)`);
-    savings += b.chars;
-  }
-
-  return cuts;
-}
-
 export async function POST(req: NextRequest) {
   try {
     const {
@@ -213,6 +99,7 @@ export async function POST(req: NextRequest) {
       analysis,
       honest,
       budget,
+      cuts,
     } = (await req.json()) as {
       jobDescription?: string;
       template?: string;
@@ -224,6 +111,7 @@ export async function POST(req: NextRequest) {
       analysis?: Analysis;
       honest?: HonestSignals;
       budget?: number;
+      cuts?: string[];
     };
 
     if (!jobDescription?.trim()) {
@@ -249,14 +137,11 @@ export async function POST(req: NextRequest) {
     }
 
     const templateLatex = template?.trim() || getTemplate().latex;
-    const effectiveBudget =
-      typeof budget === "number" && budget > 0
-        ? budget
-        : ONE_PAGE_DEFAULT_BUDGET;
 
     // Merge analyzer-flagged missing keywords into the honesty map as hard
     // "none" — but only for keywords the user hasn't already given an explicit
-    // verdict for.
+    // verdict for. This treats the analyzer's gap signal as a hard block in
+    // the builder rather than a soft suggestion.
     const mergedHonest: HonestSignals = honest
       ? { ...honest, perKeyword: { ...honest.perKeyword } }
       : { perKeyword: {} };
@@ -267,6 +152,8 @@ export async function POST(req: NextRequest) {
         }
       }
     }
+
+    const client = getAnthropic();
 
     const analysisContext = analysis
       ? `\n=== PRIOR ANALYSIS (for prioritization, not for fabrication) ===
@@ -323,24 +210,27 @@ ${profileParts.join("\n\n")}
 `
       : "";
 
-    const budgetBlock = `\nVISIBLE_CHAR_BUDGET: ${effectiveBudget}\nTarget: ${Math.round(effectiveBudget * 0.95)}\n`;
+    const budgetBlock =
+      typeof budget === "number" && budget > 0
+        ? `\nVISIBLE_CHAR_BUDGET: ${budget}\nTarget: ${Math.round(budget * 0.95)}\n`
+        : "";
 
-    const client = getAnthropic();
-
-    // ----- Server-side compose loop with retry on overshoot ---------------
-
-    const composeOnce = async (
-      cuts: string[],
-      previousCount: number,
-    ): Promise<string> => {
-      const cutsBlock =
-        cuts.length > 0
-          ? `\n=== CUTS_TO_APPLY (previous attempt was ${previousCount} chars, budget is ${effectiveBudget}, need to cut at least ${Math.max(1, previousCount - effectiveBudget)} chars) ===
+    const cutsBlock =
+      cuts && cuts.length > 0
+        ? `\n=== CUTS_TO_APPLY (the previous attempt was over budget — apply these) ===
 ${cuts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 `
-          : "";
+        : "";
 
-      const userContent = `Build a one-page LaTeX résumé for the candidate, targeted at the job description below, by composing content from the profile into the provided template's layout.
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 16000,
+      thinking: { type: "adaptive" },
+      system: SYSTEM_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: `Build a one-page LaTeX résumé for the candidate, targeted at the job description below, by composing content from the profile into the provided template's layout.
 
 === JOB DESCRIPTION ===
 ${jobDescription}
@@ -348,77 +238,25 @@ ${budgetBlock}${cutsBlock}${analysisContext}${honestBlock}${profileBlock}
 === LATEX TEMPLATE (preserve preamble, packages, custom macros, and section structure; replace all placeholder content with profile material tailored to the JD) ===
 ${templateLatex}
 
-Return the complete built LaTeX source. No code fences. No commentary.`;
+Return the complete built LaTeX source. No code fences. No commentary.`,
+        },
+      ],
+    });
 
-      const response = await client.messages.create({
-        model: MODEL,
-        max_tokens: 16000,
-        thinking: { type: "adaptive" },
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: userContent }],
-      });
-
-      const textBlock = response.content.find((b) => b.type === "text");
-      if (!textBlock || textBlock.type !== "text") {
-        throw new Error("Model returned no text content.");
-      }
-
-      let latex = textBlock.text.trim();
-      if (latex.startsWith("```")) {
-        latex = latex.replace(/^```[a-zA-Z]*\n?/, "").replace(/```\s*$/, "");
-      }
-      return latex;
-    };
-
-    let bestLatex = "";
-    let bestChars = Number.POSITIVE_INFINITY;
-    const cutsAccumulated: string[] = [];
-    let nextCuts: string[] = [];
-    let previousCount = 0;
-    let attempt = 0;
-
-    while (attempt < MAX_BUILD_ATTEMPTS) {
-      attempt += 1;
-      const latex = await composeOnce(nextCuts, previousCount);
-      const chars = countVisibleChars(latex);
-
-      // Track the closest-to-budget version in case all attempts overshoot.
-      if (chars < bestChars) {
-        bestLatex = latex;
-        bestChars = chars;
-      }
-
-      if (chars <= effectiveBudget) {
-        return NextResponse.json({
-          latex,
-          visibleChars: chars,
-          budget: effectiveBudget,
-          iterations: attempt,
-          cutsApplied: cutsAccumulated,
-          trimWarning: false,
-        });
-      }
-
-      if (attempt >= MAX_BUILD_ATTEMPTS) break;
-
-      // Build the next round's cuts list against the latest latex.
-      const newCuts = generateCuts(latex, chars - effectiveBudget);
-      if (newCuts.length === 0) break; // nothing left to propose
-
-      cutsAccumulated.push(...newCuts);
-      nextCuts = newCuts;
-      previousCount = chars;
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      return NextResponse.json(
+        { error: "Model returned no text content." },
+        { status: 502 },
+      );
     }
 
-    // Loop exhausted without converging — return the closest attempt and flag.
-    return NextResponse.json({
-      latex: bestLatex,
-      visibleChars: bestChars,
-      budget: effectiveBudget,
-      iterations: attempt,
-      cutsApplied: cutsAccumulated,
-      trimWarning: bestChars > effectiveBudget,
-    });
+    let latex = textBlock.text.trim();
+    if (latex.startsWith("```")) {
+      latex = latex.replace(/^```[a-zA-Z]*\n?/, "").replace(/```\s*$/, "");
+    }
+
+    return NextResponse.json({ latex });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[/api/build]", err);

@@ -8,7 +8,12 @@ import {
   profileToText,
   type Profile,
 } from "@/lib/profile";
-import { computeOnePageBudget } from "@/lib/latex";
+import {
+  computeOnePageBudget,
+  isWithinBudget,
+  MAX_TRIM_PASSES,
+  visibleChars,
+} from "@/lib/latex";
 import { getTemplate } from "@/lib/templates";
 
 type Phase = "input" | "analyzed" | "honesty" | "building" | "built";
@@ -37,7 +42,7 @@ export default function BuildPage() {
 
   const [phase, setPhase] = useState<Phase>("input");
   const [busy, setBusy] = useState<
-    null | "analyze" | "build" | "reanalyze"
+    null | "analyze" | "build" | "verify" | "trim" | "reanalyze"
   >(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -117,50 +122,94 @@ export default function BuildPage() {
       const { budget, originalChars, capped } =
         computeOnePageBudget(templateLatex);
 
-      // /api/build now runs its own server-side compose + cut-retry loop
-      // (up to 3 attempts) and returns the closest-to-budget version with a
-      // trimWarning flag if it still overshoots. One call from the client.
-      const res = await fetch("/api/build", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          jobDescription,
-          // Send only when user has a saved layout — let the backend
-          // fall back to the built-in template otherwise.
-          template: profile.baseResumeLatex?.trim() || undefined,
-          profileContext: {
-            parsedProfile: profile.parsed,
-            baseCvLatex: profile.baseCvLatex,
-            additionalSkills: profile.additionalSkills,
-          },
-          analysis: profileFitAnalysis,
-          honest: {
-            perKeyword: honest,
-            notes: honestNotes.trim() || undefined,
-          },
-          budget,
-        }),
-      });
-      const data = (await res.json()) as {
-        latex: string;
-        visibleChars: number;
-        budget: number;
-        iterations: number;
-        cutsApplied: string[];
-        trimWarning: boolean;
-        error?: string;
-      };
-      if (!res.ok) throw new Error(data.error ?? "Build failed");
+      const callBuild = (cuts?: string[]) =>
+        fetch("/api/build", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jobDescription,
+            // Send only when user has a saved layout — let the backend
+            // fall back to the built-in template otherwise.
+            template: profile.baseResumeLatex?.trim() || undefined,
+            profileContext: {
+              parsedProfile: profile.parsed,
+              baseCvLatex: profile.baseCvLatex,
+              additionalSkills: profile.additionalSkills,
+            },
+            analysis: profileFitAnalysis,
+            honest: {
+              perKeyword: honest,
+              notes: honestNotes.trim() || undefined,
+            },
+            budget,
+            cuts,
+          }),
+        });
 
-      setBuiltLatex(data.latex);
+      // Multi-pass build + verify/trim loop. Stop early when under budget,
+      // otherwise keep applying fresh cuts until we hit MAX_TRIM_PASSES.
+      let built = "";
+      let chars = 0;
+      let iterations = 0;
+      let allCutsApplied: string[] = [];
+      let currentCuts: string[] | undefined = undefined;
+
+      while (iterations < MAX_TRIM_PASSES) {
+        setBusy(iterations === 0 ? "build" : "trim");
+        const res = await callBuild(currentCuts);
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(
+            data.error ?? (iterations === 0 ? "Build failed" : "Trim pass failed"),
+          );
+        }
+        built = data.latex as string;
+        chars = visibleChars(built);
+        iterations += 1;
+
+        // Under budget — done.
+        if (chars <= budget) break;
+        // Out of passes — surface what we have.
+        if (iterations >= MAX_TRIM_PASSES) break;
+        // Borderline overshoot (within tolerance) — don't burn another trim pass.
+        if (isWithinBudget(chars, budget, 0.005)) break;
+
+        // Otherwise ask the verifier for fresh cuts against THIS latest LaTeX.
+        setBusy("verify");
+        const verifyRes = await fetch("/api/tailor/verify", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            latex: built,
+            jobDescription,
+            budget,
+            currentChars: chars,
+            overBy: chars - budget,
+          }),
+        });
+        const verifyData = await verifyRes.json();
+        if (
+          !verifyRes.ok ||
+          !Array.isArray(verifyData.suggestedCuts) ||
+          verifyData.suggestedCuts.length === 0
+        ) {
+          // Verifier had nothing useful — surface as-is.
+          break;
+        }
+        currentCuts = verifyData.suggestedCuts as string[];
+        allCutsApplied = [...allCutsApplied, ...currentCuts];
+      }
+
+      setBuiltLatex(built);
       setBudgetInfo({
-        budget: data.budget,
+        budget,
         originalChars,
-        builtChars: data.visibleChars,
+        builtChars: chars,
         capped,
-        iterations: data.iterations,
-        cutsApplied: data.cutsApplied ?? [],
-        fits: !data.trimWarning,
+        iterations,
+        cutsApplied: allCutsApplied,
+        // Strict: must be under budget (no tolerance) to claim "fits".
+        fits: chars <= budget,
       });
 
       // Analyze the built résumé against the JD for a final score.
@@ -168,7 +217,7 @@ export default function BuildPage() {
       const res2 = await fetch("/api/analyze", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ resume: data.latex, jobDescription }),
+        body: JSON.stringify({ resume: built, jobDescription }),
       });
       const data2 = await res2.json();
       if (!res2.ok) throw new Error(data2.error ?? "Re-analysis failed");
@@ -416,11 +465,15 @@ export default function BuildPage() {
           </div>
           <div className="font-display text-xl text-paper/85">
             {busy === "build"
-              ? "Building & trimming on the server (up to 3 passes)…"
-              : "Scoring the built résumé…"}
+              ? "Building your résumé from profile…"
+              : busy === "verify"
+                ? "Checking the one-page budget…"
+                : busy === "trim"
+                  ? "Trimming to fit one page…"
+                  : "Scoring the built résumé…"}
           </div>
           <div className="mt-2 text-xs text-paper/40">
-            Server measures visible chars mechanically and re-cuts if over budget. Typically 60–120 seconds.
+            This typically takes 30–60 seconds.
           </div>
         </section>
       )}
