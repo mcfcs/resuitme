@@ -648,11 +648,16 @@ function AnalysisCard({ analysis }: { analysis: Analysis }) {
 
       <Block title="Suggested edits" items={analysis.suggestions} />
 
-      <div className="grid md:grid-cols-2 gap-6 text-sm pt-1">
+      <div className="grid md:grid-cols-3 gap-6 text-sm pt-1">
         <KeywordRow
-          label="Keywords matched"
-          words={analysis.keyword_coverage.matched}
+          label="Keywords present"
+          words={analysis.keyword_coverage.present}
           tone="positive"
+        />
+        <KeywordRow
+          label="Keywords partial"
+          words={analysis.keyword_coverage.partial}
+          tone="partial"
         />
         <KeywordRow
           label="Keywords missing"
@@ -663,17 +668,6 @@ function AnalysisCard({ analysis }: { analysis: Analysis }) {
     </div>
   );
 }
-
-const CATEGORY_STYLE: Record<MustIncludePick["category"], string> = {
-  experience: "bg-marigold/15 text-marigold border-marigold/30",
-  project: "bg-sage-500/15 text-sage-300 border-sage-500/30",
-  skill: "bg-sky-500/15 text-sky-200 border-sky-500/30",
-  education: "bg-purple-500/15 text-purple-200 border-purple-500/30",
-  thesis: "bg-purple-500/15 text-purple-200 border-purple-500/30",
-  award: "bg-yellow-500/15 text-yellow-200 border-yellow-500/30",
-  publication: "bg-sky-500/15 text-sky-200 border-sky-500/30",
-  other: "bg-paper/10 text-paper/70 border-paper/20",
-};
 
 function MustIncludeBlock({ picks }: { picks: MustIncludePick[] }) {
   return (
@@ -696,18 +690,9 @@ function MustIncludeBlock({ picks }: { picks: MustIncludePick[] }) {
               {String(i + 1).padStart(2, "0")}
             </span>
             <div className="flex-1 min-w-0">
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <span
-                  className={`inline-flex items-center text-[10px] uppercase tracking-wider px-1.5 py-[1px] rounded border ${CATEGORY_STYLE[p.category] ?? CATEGORY_STYLE.other}`}
-                >
-                  {p.category}
-                </span>
-                <span className="text-sm font-medium text-paper/95">
-                  {p.item}
-                </span>
-              </div>
+              <div className="text-sm font-medium text-paper/95">{p.item}</div>
               <p className="text-sm text-paper/65 mt-1 leading-relaxed">
-                {p.why}
+                {p.reason}
               </p>
             </div>
           </li>
@@ -756,12 +741,14 @@ function KeywordRow({
 }: {
   label: string;
   words: string[];
-  tone: "positive" | "negative";
+  tone: "positive" | "partial" | "negative";
 }) {
   const chip =
     tone === "positive"
       ? "bg-sage-500/15 text-sage-200 border-sage-500/30"
-      : "bg-red-500/15 text-red-200 border-red-500/30";
+      : tone === "partial"
+        ? "bg-yellow-500/15 text-yellow-200 border-yellow-500/30"
+        : "bg-red-500/15 text-red-200 border-red-500/30";
   return (
     <div>
       <div className="eyebrow text-paper/50 mb-2.5">{label}</div>

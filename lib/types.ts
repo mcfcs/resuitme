@@ -1,15 +1,6 @@
 export type MustIncludePick = {
   item: string;
-  category:
-    | "experience"
-    | "project"
-    | "skill"
-    | "education"
-    | "thesis"
-    | "award"
-    | "publication"
-    | "other";
-  why: string;
+  reason: string;
 };
 
 export type Analysis = {
@@ -20,8 +11,9 @@ export type Analysis = {
   suggestions: string[];
   must_include: MustIncludePick[];
   keyword_coverage: {
-    matched: string[];
+    present: string[];
     missing: string[];
+    partial: string[];
   };
 };
 
@@ -31,7 +23,7 @@ export const ANALYSIS_SCHEMA = {
     score: {
       type: "integer",
       description:
-        "Overall fit rating from 0-100. 0 = no relevant overlap. 100 = perfect match.",
+        "Overall fit rating from 0-100. Calibrate per the SCORING RUBRIC in the system prompt.",
     },
     verdict: {
       type: "string",
@@ -64,49 +56,43 @@ export const ANALYSIS_SCHEMA = {
           item: {
             type: "string",
             description:
-              "Concise reference to the SPECIFIC item from the candidate's content — name actual experiences, projects, theses, awards, or technologies. Examples: 'aCount Sneaker Resale Platform', 'Senior Engineer role at Acme', 'Thesis: Context-Aware Sarcasm Detection', 'PyTorch + scikit-learn for ML pipelines'. Never generic categories.",
+              "SPECIFIC project name, role title, award name, or thesis title from the candidate's content. Never a generic category like 'ML experience' — name the actual instance.",
           },
-          category: {
-            type: "string",
-            enum: [
-              "experience",
-              "project",
-              "skill",
-              "education",
-              "thesis",
-              "award",
-              "publication",
-              "other",
-            ],
-          },
-          why: {
+          reason: {
             type: "string",
             description:
-              "One sentence (max ~25 words) on why this specific item is critical for THIS JD. Reference a JD requirement that it satisfies.",
+              "One sentence (~25 words max) citing the specific JD requirement(s) this item satisfies.",
           },
         },
-        required: ["item", "category", "why"],
+        required: ["item", "reason"],
         additionalProperties: false,
       },
       description:
-        "Top 3-5 items from the candidate's content that absolutely must appear in the tailored résumé. Specific names, not generic categories. Ordered by impact (highest first).",
+        "Top 3-5 items from the candidate's content that absolutely must appear in the tailored résumé. Ordered by impact (highest first).",
     },
     keyword_coverage: {
       type: "object",
       properties: {
-        matched: {
+        present: {
           type: "array",
           items: { type: "string" },
-          description: "Important JD keywords/skills present in the input.",
+          description:
+            "JD keywords/skills CLEARLY demonstrated by the candidate's content (explicit named usage with depth).",
         },
         missing: {
           type: "array",
           items: { type: "string" },
           description:
-            "Important JD keywords/skills missing from the input.",
+            "JD keywords/skills with NO evidence in the candidate's content.",
+        },
+        partial: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "JD keywords/skills the candidate has PARTIAL evidence for (mentioned in passing, adjacent experience, or limited depth).",
         },
       },
-      required: ["matched", "missing"],
+      required: ["present", "missing", "partial"],
       additionalProperties: false,
     },
   },
