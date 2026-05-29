@@ -94,7 +94,8 @@ export default function Home() {
           },
           profileContext: profile
             ? {
-                baseCvLatex: profile.baseCvLatex,
+                parsedProfile: profile.parsed,
+                baseCvLatex: profile.parsed ? undefined : profile.baseCvLatex,
                 additionalSkills: profile.additionalSkills,
               }
             : undefined,

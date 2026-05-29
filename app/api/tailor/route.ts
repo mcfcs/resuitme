@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAnthropic, MODEL } from "@/lib/anthropic";
 import type { Analysis } from "@/lib/types";
+import type { ParsedProfile } from "@/lib/profile";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -25,7 +26,10 @@ HONESTY SIGNALS — when the user provides per-keyword honesty signals, treat th
 - "partial" → only mention if there is concrete evidence in the resume or profile. Frame as "exposure to" / "familiar with" rather than expert. Do NOT promote to a headline skill.
 - "none"    → DO NOT include this keyword anywhere in the tailored resume. Do not paraphrase it. Do not surface it implicitly. Skip it entirely, even if the JD demands it. Missing the keyword is FAR better than fabricating.
 
-PROFILE CONTEXT — if a broader profile is provided, you may surface skills/experience from it that aren't on the active resume — but only when the user signals "have" for them, and only when there is room without exceeding the original resume's length.
+BROADER PROFILE — when a unified profile is provided (merged from the candidate's resume + CV + additional skills notes), you may surface skills/experience from it that aren't on the active resume — but only when:
+- The honesty signals allow it (treat the merged profile the same as the resume for honesty purposes).
+- There is room without exceeding the original resume's length.
+- The fact is unambiguously supported by the profile content (not invented by you).
 
 What you SHOULD do:
 - Rewrite bullets to lead with the outcome that matters most for this role.
@@ -54,6 +58,7 @@ export async function POST(req: NextRequest) {
       analysis?: Analysis;
       honest?: HonestSignals;
       profileContext?: {
+        parsedProfile?: ParsedProfile;
         baseCvLatex?: string;
         additionalSkills?: string;
       };
@@ -99,14 +104,21 @@ ${honest.notes?.trim() ? `Candidate's notes about their experience: ${honest.not
     let profileBlock = "";
     if (profileContext) {
       const parts: string[] = [];
-      if (profileContext.additionalSkills?.trim()) {
+      if (profileContext.parsedProfile) {
         parts.push(
-          `Additional skills/notes provided by the candidate (use to inform tailoring, only surface what the honesty signals allow):\n${profileContext.additionalSkills.trim()}`,
+          `Unified profile (structured JSON — merged from the candidate's resume, CV, and additional skills. Each item lists which source(s) it came from):
+${JSON.stringify(profileContext.parsedProfile, null, 2)}`,
+        );
+      } else if (profileContext.baseCvLatex?.trim()) {
+        parts.push(
+          `Full CV (LaTeX, longer than the resume — may contain experience that wasn't included for length reasons):
+${profileContext.baseCvLatex.trim()}`,
         );
       }
-      if (profileContext.baseCvLatex?.trim()) {
+      if (profileContext.additionalSkills?.trim()) {
         parts.push(
-          `Full CV (longer than the resume — may contain experience that wasn't included for length reasons; surface it only if it is honestly relevant):\n${profileContext.baseCvLatex.trim()}`,
+          `Additional skills/notes (free-form, candidate-provided):
+${profileContext.additionalSkills.trim()}`,
         );
       }
       if (parts.length) {

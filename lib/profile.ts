@@ -1,4 +1,4 @@
-export type ParsedSection<T> = T[];
+export type Source = "resume" | "cv" | "notes";
 
 export type ParsedEducation = {
   institution: string;
@@ -7,6 +7,7 @@ export type ParsedEducation = {
   dates?: string;
   location?: string;
   details?: string[];
+  sources: Source[];
 };
 
 export type ParsedExperience = {
@@ -15,6 +16,7 @@ export type ParsedExperience = {
   dates?: string;
   location?: string;
   bullets: string[];
+  sources: Source[];
 };
 
 export type ParsedProject = {
@@ -22,6 +24,7 @@ export type ParsedProject = {
   description?: string;
   tech?: string[];
   bullets: string[];
+  sources: Source[];
 };
 
 export type ParsedSkills = {
@@ -33,12 +36,14 @@ export type ParsedAward = {
   name: string;
   year?: string;
   description?: string;
+  sources: Source[];
 };
 
 export type ParsedPublication = {
   title: string;
   venue?: string;
   year?: string;
+  sources: Source[];
 };
 
 export type ParsedProfile = {
@@ -50,31 +55,50 @@ export type ParsedProfile = {
     links?: string[];
   };
   summary?: string;
-  education: ParsedSection<ParsedEducation>;
-  experience: ParsedSection<ParsedExperience>;
-  projects: ParsedSection<ParsedProject>;
+  education: ParsedEducation[];
+  experience: ParsedExperience[];
+  projects: ParsedProject[];
   skills: ParsedSkills;
-  awards: ParsedSection<ParsedAward>;
-  publications: ParsedSection<ParsedPublication>;
+  awards: ParsedAward[];
+  publications: ParsedPublication[];
 };
 
 export type Profile = {
   baseResumeLatex?: string;
   baseCvLatex?: string;
   additionalSkills?: string;
-  parsedFromResume?: ParsedProfile;
-  parsedFromCv?: ParsedProfile;
+  parsed?: ParsedProfile;
   updatedAt?: string;
 };
 
-const STORAGE_KEY = "resuitme.profile.v1";
+const STORAGE_KEY = "resuitme.profile.v2";
+const STORAGE_KEY_V1 = "resuitme.profile.v1";
 
 export function loadProfile(): Profile | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as Profile;
+    if (raw) return JSON.parse(raw) as Profile;
+    // Migrate from v1: keep raw inputs, drop the split parsed fields.
+    const v1Raw = localStorage.getItem(STORAGE_KEY_V1);
+    if (v1Raw) {
+      const v1 = JSON.parse(v1Raw) as {
+        baseResumeLatex?: string;
+        baseCvLatex?: string;
+        additionalSkills?: string;
+        updatedAt?: string;
+      };
+      const migrated: Profile = {
+        baseResumeLatex: v1.baseResumeLatex,
+        baseCvLatex: v1.baseCvLatex,
+        additionalSkills: v1.additionalSkills,
+        updatedAt: v1.updatedAt,
+      };
+      saveProfile(migrated);
+      localStorage.removeItem(STORAGE_KEY_V1);
+      return migrated;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -91,7 +115,7 @@ export function clearProfile(): void {
   localStorage.removeItem(STORAGE_KEY);
 }
 
-export function profileHasAnyData(p: Profile | null): boolean {
+export function profileHasAnyInput(p: Profile | null): boolean {
   if (!p) return false;
   return Boolean(
     p.baseResumeLatex?.trim() ||

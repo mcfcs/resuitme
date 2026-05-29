@@ -1,3 +1,10 @@
+const SOURCES = {
+  type: "array",
+  items: { type: "string", enum: ["resume", "cv", "notes"] },
+  description:
+    "Which input(s) contributed to this item. Use 'resume' if it appears in the resume LaTeX, 'cv' if in the CV LaTeX, 'notes' if from the candidate's additional-skills notes. Include all that apply.",
+} as const;
+
 export const PROFILE_SCHEMA = {
   type: "object",
   properties: {
@@ -11,7 +18,8 @@ export const PROFILE_SCHEMA = {
         links: {
           type: "array",
           items: { type: "string" },
-          description: "URLs (LinkedIn, GitHub, portfolio, etc.).",
+          description:
+            "URLs (LinkedIn, GitHub, portfolio, etc.) — union across all sources, deduplicated.",
         },
       },
       required: ["email", "phone", "location", "links"],
@@ -20,7 +28,7 @@ export const PROFILE_SCHEMA = {
     summary: {
       type: "string",
       description:
-        "Professional summary / objective if present. Empty string if absent.",
+        "Professional summary / objective. Use the most complete version across the sources. Empty string if absent in all.",
     },
     education: {
       type: "array",
@@ -36,10 +44,19 @@ export const PROFILE_SCHEMA = {
             type: "array",
             items: { type: "string" },
             description:
-              "GPA, honors, relevant coursework, thesis, etc. Empty array if none.",
+              "GPA, honors, coursework, thesis. UNION across sources, deduplicated.",
           },
+          sources: SOURCES,
         },
-        required: ["institution", "degree", "field", "dates", "location", "details"],
+        required: [
+          "institution",
+          "degree",
+          "field",
+          "dates",
+          "location",
+          "details",
+          "sources",
+        ],
         additionalProperties: false,
       },
     },
@@ -55,10 +72,12 @@ export const PROFILE_SCHEMA = {
           bullets: {
             type: "array",
             items: { type: "string" },
-            description: "One per bullet point under this role.",
+            description:
+              "UNION of bullets across sources, deduplicated. Keep distinct accomplishments even when wording differs slightly.",
           },
+          sources: SOURCES,
         },
-        required: ["company", "role", "dates", "location", "bullets"],
+        required: ["company", "role", "dates", "location", "bullets", "sources"],
         additionalProperties: false,
       },
     },
@@ -72,14 +91,15 @@ export const PROFILE_SCHEMA = {
           tech: {
             type: "array",
             items: { type: "string" },
-            description: "Technologies/tools used.",
+            description: "Technologies/tools used — union, deduplicated.",
           },
           bullets: {
             type: "array",
             items: { type: "string" },
           },
+          sources: SOURCES,
         },
-        required: ["name", "description", "tech", "bullets"],
+        required: ["name", "description", "tech", "bullets", "sources"],
         additionalProperties: false,
       },
     },
@@ -102,7 +122,7 @@ export const PROFILE_SCHEMA = {
           type: "array",
           items: { type: "string" },
           description:
-            "All distinct skills as a flat list (deduplicated across categories).",
+            "All distinct skills as a flat deduplicated list across all sources (resume + CV + additional skills notes).",
         },
       },
       required: ["categories", "flat"],
@@ -116,8 +136,9 @@ export const PROFILE_SCHEMA = {
           name: { type: "string" },
           year: { type: "string" },
           description: { type: "string" },
+          sources: SOURCES,
         },
-        required: ["name", "year", "description"],
+        required: ["name", "year", "description", "sources"],
         additionalProperties: false,
       },
     },
@@ -129,8 +150,9 @@ export const PROFILE_SCHEMA = {
           title: { type: "string" },
           venue: { type: "string" },
           year: { type: "string" },
+          sources: SOURCES,
         },
-        required: ["title", "venue", "year"],
+        required: ["title", "venue", "year", "sources"],
         additionalProperties: false,
       },
     },

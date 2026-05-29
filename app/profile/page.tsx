@@ -8,16 +8,18 @@ import {
   saveProfile,
   type ParsedProfile,
   type Profile,
+  type Source,
 } from "@/lib/profile";
 
 type DocKind = "resume" | "cv";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile>({});
-  const [busy, setBusy] = useState<null | "parse-resume" | "parse-cv">(null);
+  const [busy, setBusy] = useState<null | "build">(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const profileViewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const existing = loadProfile();
@@ -40,33 +42,41 @@ export default function ProfilePage() {
     reader.readAsText(file);
   }
 
-  async function parse(kind: DocKind) {
+  async function build() {
     setError(null);
-    const latex =
-      kind === "resume" ? profile.baseResumeLatex : profile.baseCvLatex;
-    if (!latex?.trim()) {
-      setError(
-        `Add your ${kind === "resume" ? "base resume" : "base CV"} LaTeX first.`,
-      );
+    if (
+      !profile.baseResumeLatex?.trim() &&
+      !profile.baseCvLatex?.trim() &&
+      !profile.additionalSkills?.trim()
+    ) {
+      setError("Add at least one input — resume, CV, or skills notes.");
       return;
     }
-    setBusy(kind === "resume" ? "parse-resume" : "parse-cv");
+    setBusy("build");
     try {
-      const res = await fetch("/api/profile/parse", {
+      const res = await fetch("/api/profile/build", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ latex }),
+        body: JSON.stringify({
+          resumeLatex: profile.baseResumeLatex,
+          cvLatex: profile.baseCvLatex,
+          additionalSkills: profile.additionalSkills,
+        }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Parse failed");
-      const updated: Profile = {
-        ...profile,
-        [kind === "resume" ? "parsedFromResume" : "parsedFromCv"]: data.parsed,
-      };
+      if (!res.ok) throw new Error(data.error ?? "Profile build failed");
+      const updated: Profile = { ...profile, parsed: data.parsed };
       setProfile(updated);
       saveProfile(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
+      // Smooth-scroll the built profile into view.
+      setTimeout(() => {
+        profileViewRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 50);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -74,7 +84,7 @@ export default function ProfilePage() {
     }
   }
 
-  function save() {
+  function saveInputsOnly() {
     saveProfile(profile);
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
@@ -93,6 +103,16 @@ export default function ProfilePage() {
       </main>
     );
   }
+
+  const hasAnyInput =
+    !!profile.baseResumeLatex?.trim() ||
+    !!profile.baseCvLatex?.trim() ||
+    !!profile.additionalSkills?.trim();
+
+  const builtSources: Source[] = [];
+  if (profile.baseResumeLatex?.trim()) builtSources.push("resume");
+  if (profile.baseCvLatex?.trim()) builtSources.push("cv");
+  if (profile.additionalSkills?.trim()) builtSources.push("notes");
 
   return (
     <main className="min-h-screen px-6 py-10 md:py-16 max-w-5xl mx-auto">
@@ -121,9 +141,9 @@ export default function ProfilePage() {
       <header className="mb-10">
         <h1 className="text-4xl font-bold tracking-tight">Your profile</h1>
         <p className="mt-2 text-white/60 max-w-2xl">
-          Save your base resume, CV, and extra skills here. Resuitme will use
-          this as the source of truth when tailoring future applications —
-          nothing gets fabricated about what you can do.
+          Paste your base resume, base CV, and any extra skills. Resuitme merges
+          them into one unified profile — deduplicating shared entries and
+          combining bullets where the resume and CV overlap.
         </p>
       </header>
 
@@ -135,31 +155,26 @@ export default function ProfilePage() {
 
       <DocumentBlock
         title="Base resume (LaTeX)"
-        description="Your standard, untailored resume. This becomes the starting point when you click 'Use my base resume' on the tailor page."
+        description="Your standard, untailored resume. Becomes the starting point when you click 'Use my base resume' on the tailor page."
         value={profile.baseResumeLatex ?? ""}
         onChange={(v) => set("baseResumeLatex", v)}
         onFile={(f) => handleFile("resume", f)}
-        onParse={() => parse("resume")}
-        parsing={busy === "parse-resume"}
-        parsed={profile.parsedFromResume}
       />
 
       <DocumentBlock
         title="Base CV (LaTeX)"
-        description="Optional. A longer comprehensive CV — useful if you want to surface experience that wouldn't fit on a 1-page resume."
+        description="Optional. A longer comprehensive CV — anything that didn't fit on the resume. Merged into the same profile."
         value={profile.baseCvLatex ?? ""}
         onChange={(v) => set("baseCvLatex", v)}
         onFile={(f) => handleFile("cv", f)}
-        onParse={() => parse("cv")}
-        parsing={busy === "parse-cv"}
-        parsed={profile.parsedFromCv}
       />
 
       <section className="mb-10">
         <h2 className="text-xl font-semibold mb-2">Additional skills & notes</h2>
         <p className="text-sm text-white/60 mb-3">
-          Anything you have that isn't on your resume or CV. Tools, languages,
-          hobby projects, certifications-in-progress. Free form.
+          Anything you have that isn&apos;t on your resume or CV. Tools,
+          languages, projects, in-progress certifications. Free form. Merged in
+          and tagged as &quot;notes&quot;.
         </p>
         <textarea
           value={profile.additionalSkills ?? ""}
@@ -173,20 +188,49 @@ export default function ProfilePage() {
         />
       </section>
 
-      <div className="flex flex-wrap items-center gap-3 sticky bottom-4 backdrop-blur bg-black/60 border border-white/10 rounded-lg px-4 py-3">
+      <div className="flex flex-wrap items-center gap-3 sticky bottom-4 backdrop-blur bg-black/70 border border-white/10 rounded-lg px-4 py-3 z-10">
         <button
-          onClick={save}
-          className="px-5 py-2 rounded-lg bg-white text-black font-medium text-sm hover:bg-white/90 transition"
+          onClick={build}
+          disabled={busy !== null || !hasAnyInput}
+          className="px-5 py-2 rounded-lg bg-emerald-500 text-black font-medium text-sm hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition"
         >
-          Save profile
+          {busy === "build"
+            ? "Merging…"
+            : profile.parsed
+              ? "Rebuild profile"
+              : "Build profile"}
+        </button>
+        <button
+          onClick={saveInputsOnly}
+          disabled={busy !== null}
+          className="px-4 py-2 rounded-lg border border-white/15 text-sm text-white/80 hover:bg-white/5 disabled:opacity-40 transition"
+        >
+          Save inputs only
         </button>
         {saved && (
           <span className="text-xs text-emerald-300">Saved to this browser.</span>
         )}
-        <span className="text-xs text-white/40 ml-auto">
-          Profile lives in your browser's localStorage. Clear browser data = profile lost.
+        <span className="text-xs text-white/40 ml-auto hidden md:block">
+          Profile lives in your browser&apos;s localStorage.
         </span>
       </div>
+
+      <div ref={profileViewRef} />
+
+      {profile.parsed && (
+        <section className="mt-12">
+          <div className="flex items-baseline justify-between flex-wrap gap-3 mb-4">
+            <h2 className="text-2xl font-semibold">Merged profile</h2>
+            <div className="flex items-center gap-2 text-xs text-white/60">
+              <span>Built from:</span>
+              {builtSources.map((s) => (
+                <SourceBadge key={s} source={s} />
+              ))}
+            </div>
+          </div>
+          <ParsedProfileView parsed={profile.parsed} />
+        </section>
+      )}
     </main>
   );
 }
@@ -197,18 +241,12 @@ function DocumentBlock({
   value,
   onChange,
   onFile,
-  onParse,
-  parsing,
-  parsed,
 }: {
   title: string;
   description: string;
   value: string;
   onChange: (v: string) => void;
   onFile: (f: File | null) => void;
-  onParse: () => void;
-  parsing: boolean;
-  parsed?: ParsedProfile;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   return (
@@ -232,13 +270,6 @@ function DocumentBlock({
           >
             Upload .tex
           </button>
-          <button
-            onClick={onParse}
-            disabled={parsing || !value.trim()}
-            className="px-3 py-1.5 rounded-md bg-emerald-500/90 text-black text-xs font-medium hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          >
-            {parsing ? "Parsing…" : parsed ? "Re-parse with AI" : "Parse with AI"}
-          </button>
         </div>
       </div>
 
@@ -251,38 +282,60 @@ function DocumentBlock({
       <div className="text-xs text-white/40 mt-1">
         {value.length.toLocaleString()} chars
       </div>
-
-      {parsed && <ParsedProfileView parsed={parsed} />}
     </section>
+  );
+}
+
+function SourceBadge({ source }: { source: Source }) {
+  const style: Record<Source, string> = {
+    resume: "bg-sky-500/15 text-sky-200 border-sky-500/30",
+    cv: "bg-purple-500/15 text-purple-200 border-purple-500/30",
+    notes: "bg-amber-500/15 text-amber-200 border-amber-500/30",
+  };
+  const label: Record<Source, string> = {
+    resume: "resume",
+    cv: "cv",
+    notes: "notes",
+  };
+  return (
+    <span
+      className={`inline-flex items-center px-1.5 py-[1px] rounded-md text-[10px] uppercase tracking-wider border ${style[source]}`}
+    >
+      {label[source]}
+    </span>
+  );
+}
+
+function SourceBadges({ sources }: { sources: Source[] }) {
+  if (!sources || sources.length === 0) return null;
+  return (
+    <div className="inline-flex items-center gap-1 ml-2 align-middle">
+      {sources.map((s) => (
+        <SourceBadge key={s} source={s} />
+      ))}
+    </div>
   );
 }
 
 function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
   return (
-    <div className="mt-4 rounded-lg border border-white/10 bg-white/[0.02] p-5 space-y-6">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          {parsed.name && (
-            <h3 className="text-2xl font-semibold">{parsed.name}</h3>
-          )}
-          {parsed.contact && (
-            <div className="mt-1 text-sm text-white/70 flex flex-wrap gap-x-4 gap-y-1">
-              {parsed.contact.email && <span>{parsed.contact.email}</span>}
-              {parsed.contact.phone && <span>{parsed.contact.phone}</span>}
-              {parsed.contact.location && (
-                <span>{parsed.contact.location}</span>
-              )}
-              {parsed.contact.links?.map((l, i) => (
-                <span key={i} className="text-white/50">
-                  {l}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        <span className="text-[10px] uppercase tracking-wider text-emerald-300/80 px-2 py-0.5 rounded-full border border-emerald-500/30">
-          Parsed by AI
-        </span>
+    <div className="rounded-lg border border-white/10 bg-white/[0.02] p-5 space-y-6">
+      <div>
+        {parsed.name && (
+          <h3 className="text-2xl font-semibold">{parsed.name}</h3>
+        )}
+        {parsed.contact && (
+          <div className="mt-1 text-sm text-white/70 flex flex-wrap gap-x-4 gap-y-1">
+            {parsed.contact.email && <span>{parsed.contact.email}</span>}
+            {parsed.contact.phone && <span>{parsed.contact.phone}</span>}
+            {parsed.contact.location && <span>{parsed.contact.location}</span>}
+            {parsed.contact.links?.map((l, i) => (
+              <span key={i} className="text-white/50">
+                {l}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {parsed.summary && (
@@ -300,7 +353,10 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
                 className="rounded border border-white/10 bg-white/[0.02] p-3"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-1">
-                  <div className="font-medium text-white/90">{e.role}</div>
+                  <div className="font-medium text-white/90">
+                    {e.role}
+                    <SourceBadges sources={e.sources} />
+                  </div>
                   <div className="text-xs text-white/50">{e.dates}</div>
                 </div>
                 <div className="text-sm text-white/70">
@@ -328,7 +384,10 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
                 key={i}
                 className="rounded border border-white/10 bg-white/[0.02] p-3"
               >
-                <div className="font-medium text-white/90">{p.name}</div>
+                <div className="font-medium text-white/90">
+                  {p.name}
+                  <SourceBadges sources={p.sources} />
+                </div>
                 {p.description && (
                   <div className="text-sm text-white/70 mt-0.5">
                     {p.description}
@@ -370,6 +429,7 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
                 <div className="flex flex-wrap items-baseline justify-between gap-1">
                   <div className="font-medium text-white/90">
                     {e.institution}
+                    <SourceBadges sources={e.sources} />
                   </div>
                   <div className="text-xs text-white/50">{e.dates}</div>
                 </div>
@@ -390,7 +450,7 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
       )}
 
       {parsed.skills.flat.length > 0 && (
-        <Section title="Skills">
+        <Section title={`Skills (${parsed.skills.flat.length})`}>
           {parsed.skills.categories.length > 0 ? (
             <div className="space-y-2">
               {parsed.skills.categories.map((c, i) => (
@@ -436,6 +496,7 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
                 {a.description && (
                   <span className="text-white/60"> — {a.description}</span>
                 )}
+                <SourceBadges sources={a.sources} />
               </li>
             ))}
           </ul>
@@ -450,6 +511,7 @@ function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
                 <span className="text-white/90">{p.title}</span>
                 {p.venue && <span className="text-white/60"> · {p.venue}</span>}
                 {p.year && <span className="text-white/50"> · {p.year}</span>}
+                <SourceBadges sources={p.sources} />
               </li>
             ))}
           </ul>
