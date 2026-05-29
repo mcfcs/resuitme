@@ -15,3 +15,4 @@ export function getAnthropic(): Anthropic {
 }
 
 export const MODEL = "claude-opus-4-7";
+export const MODEL_FAST = "claude-haiku-4-5";
