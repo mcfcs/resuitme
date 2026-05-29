@@ -123,3 +123,123 @@ export function profileHasAnyInput(p: Profile | null): boolean {
       p.additionalSkills?.trim(),
   );
 }
+
+/**
+ * Flatten a ParsedProfile into a plain-text summary suitable for analysis or
+ * for feeding into a model as "the candidate's content". Not pretty — just
+ * comprehensive and parseable.
+ */
+export function profileToText(p: ParsedProfile): string {
+  const sections: string[] = [];
+
+  if (p.name) sections.push(`Name: ${p.name}`);
+
+  if (p.contact) {
+    const bits = [
+      p.contact.email,
+      p.contact.phone,
+      p.contact.location,
+      ...(p.contact.links ?? []),
+    ].filter(Boolean);
+    if (bits.length) sections.push(`Contact: ${bits.join(" | ")}`);
+  }
+
+  if (p.summary) sections.push(`Summary:\n${p.summary}`);
+
+  if (p.education?.length) {
+    sections.push(
+      "Education:\n" +
+        p.education
+          .map((e) => {
+            const header = [
+              e.institution,
+              [e.degree, e.field].filter(Boolean).join(" in "),
+              e.dates,
+              e.location,
+            ]
+              .filter(Boolean)
+              .join(" — ");
+            const details = (e.details ?? []).length
+              ? "\n  • " + e.details!.join("\n  • ")
+              : "";
+            return `- ${header}${details}`;
+          })
+          .join("\n"),
+    );
+  }
+
+  if (p.experience?.length) {
+    sections.push(
+      "Experience:\n" +
+        p.experience
+          .map((e) => {
+            const header = [
+              e.role,
+              `at ${e.company}`,
+              e.dates,
+              e.location,
+            ]
+              .filter(Boolean)
+              .join(" — ");
+            const bullets = e.bullets.length
+              ? "\n  • " + e.bullets.join("\n  • ")
+              : "";
+            return `- ${header}${bullets}`;
+          })
+          .join("\n\n"),
+    );
+  }
+
+  if (p.projects?.length) {
+    sections.push(
+      "Projects:\n" +
+        p.projects
+          .map((pr) => {
+            const head = pr.tech?.length
+              ? `${pr.name} [${pr.tech.join(", ")}]`
+              : pr.name;
+            const desc = pr.description ? `\n  ${pr.description}` : "";
+            const bullets = pr.bullets?.length
+              ? "\n  • " + pr.bullets.join("\n  • ")
+              : "";
+            return `- ${head}${desc}${bullets}`;
+          })
+          .join("\n\n"),
+    );
+  }
+
+  if (p.skills?.flat?.length) {
+    const cats = p.skills.categories
+      ?.map((c) => `${c.name}: ${c.items.join(", ")}`)
+      .join("\n  ");
+    sections.push(
+      "Skills:\n  " + (cats?.length ? cats : p.skills.flat.join(", ")),
+    );
+  }
+
+  if (p.awards?.length) {
+    sections.push(
+      "Awards:\n" +
+        p.awards
+          .map(
+            (a) =>
+              `- ${a.name}${a.year ? ` (${a.year})` : ""}${a.description ? ` — ${a.description}` : ""}`,
+          )
+          .join("\n"),
+    );
+  }
+
+  if (p.publications?.length) {
+    sections.push(
+      "Publications:\n" +
+        p.publications
+          .map(
+            (pp) =>
+              `- ${pp.title}${pp.venue ? ` — ${pp.venue}` : ""}${pp.year ? ` (${pp.year})` : ""}`,
+          )
+          .join("\n"),
+    );
+  }
+
+  return sections.join("\n\n");
+}

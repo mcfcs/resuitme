@@ -23,8 +23,10 @@ CORE RULES — never break these:
 6. Don't keyword-stuff. If a JD term doesn't honestly apply, leave it out.
 
 ONE-PAGE LENGTH CONSTRAINT — HARD RULE:
-- The tailored resume MUST fit on a single standard letter/A4 page when compiled. This applies regardless of the original resume's length.
-- If the original is already 2+ pages, you MUST aggressively cut to compress it to one page.
+- The tailored resume MUST fit on a single standard letter/A4 page when compiled.
+- The visible text (everything that renders — section titles, bullets, contact info, dates, etc. — EXCLUDING LaTeX commands, comments, and braces) MUST NOT exceed the VISIBLE_CHAR_BUDGET stated in the user message below. This budget is calibrated for one page.
+- The character count is measured by stripping all \\commands, comments, %, and {} braces. Plan and self-meter as you write.
+- Going OVER the budget by even a small amount risks pushing onto a second page. Stay UNDER, not exactly at, the budget. Aim for ~95% of the budget.
 - Be ruthless about prioritization. Make explicit selection decisions:
   • Drop entire projects, roles, or bullets that are not relevant to this JD.
   • Trim older or less-relevant experience first; recent and JD-aligned content stays.
@@ -33,8 +35,9 @@ ONE-PAGE LENGTH CONSTRAINT — HARD RULE:
   • Compress multi-line summaries to one or two lines, or omit the summary entirely if space is tight.
   • Collapse skills into a compact categorized block; don't list every tool.
 - Selection criteria, in order: (1) directly relevant to the JD's must-haves, (2) recent, (3) quantified impact, (4) seniority-appropriate signal. Cut what fails these.
-- Never compromise readability to fit. If the result feels crammed, cut more content — don't shrink the font or margins of the original template.
-- It is far better to drop a project than to ship a 1.1-page resume that wraps onto a second page.
+- It is FAR better to drop a project than to ship a 1.1-page resume that wraps onto a second page.
+
+EXPLICIT CUT INSTRUCTIONS — when the user message contains a "CUTS_TO_APPLY" block, treat each item as a mandatory edit. The previous attempt overshot the budget; these cuts are required to bring the resume under one page. Apply them before you start writing.
 
 HONESTY SIGNALS — when the user provides per-keyword honesty signals, treat them as HARD CONSTRAINTS:
 - "have"    → safe to add or emphasize naturally where the resume already supports it.
@@ -43,7 +46,7 @@ HONESTY SIGNALS — when the user provides per-keyword honesty signals, treat th
 
 BROADER PROFILE — when a unified profile is provided (merged from the candidate's resume + CV + additional skills notes), you may surface skills/experience from it that aren't on the active resume — but only when:
 - The honesty signals allow it (treat the merged profile the same as the resume for honesty purposes).
-- It earns its place under the one-page constraint (you may need to drop something else to make room).
+- It earns its place under the one-page budget (you may need to drop something else to make room).
 - The fact is unambiguously supported by the profile content (not invented by you).
 
 What you SHOULD do:
@@ -51,7 +54,7 @@ What you SHOULD do:
 - Quantify impact where the original resume provides the numbers (never invent numbers).
 - Re-order sections or bullets so the most relevant experience appears first.
 - Use the JD's terminology when the candidate has genuinely done the equivalent work.
-- Aggressively drop, trim, and consolidate so the output fits on exactly one page.
+- Aggressively drop, trim, and consolidate so the output fits the one-page budget.
 
 OUTPUT FORMAT:
 - Return ONLY the complete, compilable LaTeX source.
@@ -67,6 +70,8 @@ export async function POST(req: NextRequest) {
       analysis,
       honest,
       profileContext,
+      budget,
+      cuts,
     } = (await req.json()) as {
       resume?: string;
       jobDescription?: string;
@@ -77,6 +82,8 @@ export async function POST(req: NextRequest) {
         baseCvLatex?: string;
         additionalSkills?: string;
       };
+      budget?: number;
+      cuts?: string[];
     };
 
     if (!resume?.trim() || !jobDescription?.trim()) {
@@ -141,6 +148,23 @@ ${profileContext.additionalSkills.trim()}`,
       }
     }
 
+    const budgetBlock =
+      typeof budget === "number" && budget > 0
+        ? `\n=== VISIBLE_CHAR_BUDGET (HARD CEILING) ===
+${budget} visible characters maximum.
+Target ~${Math.round(budget * 0.95)} (95% of budget) to leave safety margin.
+Visible characters = everything that renders after stripping LaTeX commands, comments, and braces.
+The output's visible-char count will be measured after you respond. Going over forces a re-trim.
+`
+        : "";
+
+    const cutsBlock =
+      cuts && cuts.length > 0
+        ? `\n=== CUTS_TO_APPLY (the previous attempt was over budget — apply these) ===
+${cuts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
+`
+        : "";
+
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 16000,
@@ -153,7 +177,7 @@ ${profileContext.additionalSkills.trim()}`,
 
 === JOB DESCRIPTION ===
 ${jobDescription}
-${analysisContext}${honestBlock}${profileBlock}
+${budgetBlock}${cutsBlock}${analysisContext}${honestBlock}${profileBlock}
 === ORIGINAL RESUME (LaTeX source — this is the document to rewrite) ===
 ${resume}
 

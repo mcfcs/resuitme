@@ -359,12 +359,20 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen px-6 py-8 md:py-12 max-w-5xl mx-auto">
       <nav className="mb-12 flex items-center justify-between animate-fade-in">
-        <Link
-          href="/"
-          className="eyebrow text-paper/60 hover:text-marigold border-b border-paper/15 hover:border-marigold pb-1 transition-colors"
-        >
-          ← Back to tailor
-        </Link>
+        <div className="flex items-center gap-5">
+          <Link
+            href="/"
+            className="eyebrow text-paper/60 hover:text-marigold border-b border-paper/15 hover:border-marigold pb-1 transition-colors"
+          >
+            Tailor mode
+          </Link>
+          <Link
+            href="/build"
+            className="eyebrow text-paper/60 hover:text-sage-300 border-b border-transparent hover:border-sage-400 pb-1 transition-colors"
+          >
+            Build mode
+          </Link>
+        </div>
         <div className="flex items-center gap-4">
           {profile.updatedAt && (
             <span className="text-xs text-paper/40 tabular-nums">

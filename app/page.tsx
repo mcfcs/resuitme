@@ -4,19 +4,34 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Analysis } from "@/lib/types";
 import { loadProfile, type Profile } from "@/lib/profile";
+import {
+  computeOnePageBudget,
+  isWithinBudget,
+  visibleChars,
+} from "@/lib/latex";
 
 type Phase = "input" | "analyzed" | "honesty" | "tailoring" | "tailored";
 
 type HonestVerdict = "have" | "partial" | "none";
+
+type BudgetInfo = {
+  budget: number;
+  originalChars: number;
+  tailoredChars: number;
+  capped: boolean;
+  iterations: number;
+  cutsApplied: string[];
+  fits: boolean;
+};
 
 export default function Home() {
   const [resume, setResume] = useState("");
   const [jobDescription, setJobDescription] = useState("");
 
   const [phase, setPhase] = useState<Phase>("input");
-  const [busy, setBusy] = useState<null | "analyze" | "tailor" | "reanalyze">(
-    null,
-  );
+  const [busy, setBusy] = useState<
+    null | "analyze" | "tailor" | "verify" | "trim" | "reanalyze"
+  >(null);
   const [error, setError] = useState<string | null>(null);
 
   const [originalAnalysis, setOriginalAnalysis] = useState<Analysis | null>(
@@ -28,6 +43,7 @@ export default function Home() {
   );
 
   const [copied, setCopied] = useState(false);
+  const [budgetInfo, setBudgetInfo] = useState<BudgetInfo | null>(null);
 
   // Honesty signals — per missing keyword
   const [honest, setHonest] = useState<Record<string, HonestVerdict>>({});
@@ -78,39 +94,94 @@ export default function Home() {
   async function tailor() {
     if (!originalAnalysis) return;
     setError(null);
+    setBudgetInfo(null);
     setBusy("tailor");
     setPhase("tailoring");
     try {
-      const res = await fetch("/api/tailor", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          resume,
-          jobDescription,
-          analysis: originalAnalysis,
-          honest: {
-            perKeyword: honest,
-            notes: honestNotes.trim() || undefined,
-          },
-          profileContext: profile
-            ? {
-                parsedProfile: profile.parsed,
-                baseCvLatex: profile.parsed ? undefined : profile.baseCvLatex,
-                additionalSkills: profile.additionalSkills,
-              }
-            : undefined,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Tailoring failed");
-      setTailoredLatex(data.latex);
+      // Compute the one-page visible-char budget from the user's original.
+      const { budget, originalChars, capped } = computeOnePageBudget(resume);
 
-      // Auto-reanalyze the tailored version
+      const callTailor = (cuts?: string[]) =>
+        fetch("/api/tailor", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            resume,
+            jobDescription,
+            analysis: originalAnalysis,
+            honest: {
+              perKeyword: honest,
+              notes: honestNotes.trim() || undefined,
+            },
+            profileContext: profile
+              ? {
+                  parsedProfile: profile.parsed,
+                  baseCvLatex: profile.parsed ? undefined : profile.baseCvLatex,
+                  additionalSkills: profile.additionalSkills,
+                }
+              : undefined,
+            budget,
+            cuts,
+          }),
+        });
+
+      // Pass 1 — tailor with the budget as a hard ceiling.
+      let res = await callTailor();
+      let data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Tailoring failed");
+      let tailored = data.latex as string;
+      let chars = visibleChars(tailored);
+      let iterations = 1;
+      let cutsApplied: string[] = [];
+
+      // Verify and trim if we overshot the budget.
+      if (!isWithinBudget(chars, budget)) {
+        setBusy("verify");
+        const verifyRes = await fetch("/api/tailor/verify", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            latex: tailored,
+            jobDescription,
+            budget,
+            currentChars: chars,
+            overBy: chars - budget,
+          }),
+        });
+        const verifyData = await verifyRes.json();
+        if (
+          verifyRes.ok &&
+          Array.isArray(verifyData.suggestedCuts) &&
+          verifyData.suggestedCuts.length > 0
+        ) {
+          cutsApplied = verifyData.suggestedCuts;
+          setBusy("trim");
+          res = await callTailor(cutsApplied);
+          data = await res.json();
+          if (!res.ok) throw new Error(data.error ?? "Trim pass failed");
+          tailored = data.latex;
+          chars = visibleChars(tailored);
+          iterations = 2;
+        }
+      }
+
+      setTailoredLatex(tailored);
+      setBudgetInfo({
+        budget,
+        originalChars,
+        tailoredChars: chars,
+        capped,
+        iterations,
+        cutsApplied,
+        fits: isWithinBudget(chars, budget),
+      });
+
+      // Auto-reanalyze the (possibly trimmed) tailored version.
       setBusy("reanalyze");
       const res2 = await fetch("/api/analyze", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ resume: data.latex, jobDescription }),
+        body: JSON.stringify({ resume: tailored, jobDescription }),
       });
       const data2 = await res2.json();
       if (!res2.ok) throw new Error(data2.error ?? "Re-analysis failed");
@@ -171,6 +242,7 @@ export default function Home() {
     setHonest({});
     setHonestNotes("");
     setError(null);
+    setBudgetInfo(null);
   }
 
   function setVerdict(keyword: string, v: HonestVerdict) {
@@ -198,12 +270,20 @@ export default function Home() {
             .
           </span>
         </Link>
-        <Link
-          href="/profile"
-          className="eyebrow text-paper/60 hover:text-marigold border-b border-paper/15 hover:border-marigold pb-1 transition-colors"
-        >
-          {profile?.updatedAt ? "Your profile →" : "Set up profile →"}
-        </Link>
+        <div className="flex items-center gap-5">
+          <Link
+            href="/build"
+            className="eyebrow text-paper/60 hover:text-sage-300 border-b border-transparent hover:border-sage-400 pb-1 transition-colors"
+          >
+            Build mode
+          </Link>
+          <Link
+            href="/profile"
+            className="eyebrow text-paper/60 hover:text-marigold border-b border-paper/15 hover:border-marigold pb-1 transition-colors"
+          >
+            {profile?.updatedAt ? "Your profile →" : "Set up profile →"}
+          </Link>
+        </div>
       </nav>
 
       <header className="mb-14 max-w-3xl">
@@ -361,7 +441,11 @@ export default function Home() {
           <div className="font-display text-xl text-paper/85">
             {busy === "tailor"
               ? "Tailoring your résumé…"
-              : "Re-analyzing the tailored version…"}
+              : busy === "verify"
+                ? "Checking the one-page budget…"
+                : busy === "trim"
+                  ? "Trimming to fit one page…"
+                  : "Re-analyzing the tailored version…"}
           </div>
           <div className="mt-2 text-xs text-paper/40">
             This typically takes 30–60 seconds.
@@ -400,9 +484,12 @@ export default function Home() {
 
           <section className="mb-14 animate-rise-in">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <h2 className="font-display text-3xl font-medium">
-                Tailored LaTeX
-              </h2>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="font-display text-3xl font-medium">
+                  Tailored LaTeX
+                </h2>
+                {budgetInfo && <BudgetBadge info={budgetInfo} />}
+              </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={copyLatex}
@@ -433,6 +520,25 @@ export default function Home() {
               an instant PDF preview in a new tab — Overleaf renders LaTeX with
               full package support.
             </p>
+            {budgetInfo && budgetInfo.iterations > 1 && budgetInfo.cutsApplied.length > 0 && (
+              <details className="mt-4 rounded-md border border-paper/10 bg-ink-raised/30 p-4 text-sm">
+                <summary className="cursor-pointer text-paper/70 select-none">
+                  <span className="font-display italic text-paper/85">
+                    Trimmed to fit one page
+                  </span>
+                  <span className="text-paper/40 ml-2 text-xs">
+                    ({budgetInfo.cutsApplied.length}{" "}
+                    {budgetInfo.cutsApplied.length === 1 ? "cut" : "cuts"}{" "}
+                    applied)
+                  </span>
+                </summary>
+                <ul className="mt-3 space-y-1.5 text-paper/70 list-disc list-outside pl-5">
+                  {budgetInfo.cutsApplied.map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
           </section>
         </>
       )}
@@ -448,6 +554,41 @@ export default function Home() {
         </span>
       </footer>
     </main>
+  );
+}
+
+function BudgetBadge({ info }: { info: BudgetInfo }) {
+  const pct = info.budget > 0 ? info.tailoredChars / info.budget : 0;
+  const tone = info.fits
+    ? "border-sage-500/40 bg-sage-500/10 text-sage-300"
+    : "border-orange-500/40 bg-orange-500/10 text-orange-200";
+  const icon = info.fits ? "✓" : "!";
+  return (
+    <div
+      title={
+        `Budget ${info.budget} visible chars (one-page heuristic)\n` +
+        `Tailored ${info.tailoredChars} chars (${Math.round(pct * 100)}%)\n` +
+        (info.iterations > 1
+          ? `Trimmed in ${info.iterations} passes${info.cutsApplied.length ? ` — ${info.cutsApplied.length} cuts applied` : ""}`
+          : "Fit on the first pass")
+      }
+      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-mono text-xs tabular-nums ${tone}`}
+    >
+      <span className="font-semibold">{icon}</span>
+      <span>
+        {info.tailoredChars.toLocaleString()}{" "}
+        <span className="opacity-50">/</span>{" "}
+        {info.budget.toLocaleString()}
+      </span>
+      <span className="opacity-50">·</span>
+      <span>{info.fits ? "fits 1 page" : "slightly over"}</span>
+      {info.iterations > 1 && (
+        <>
+          <span className="opacity-50">·</span>
+          <span>trimmed</span>
+        </>
+      )}
+    </div>
   );
 }
 
