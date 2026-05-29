@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 10 10 14;
+  --foreground: 245 245 250;
+}
+
+html,
+body {
+  background: rgb(var(--background));
+  color: rgb(var(--foreground));
+  min-height: 100vh;
+}
+
+/* Subtle scrollbars */
+textarea::-webkit-scrollbar,
+pre::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+textarea::-webkit-scrollbar-thumb,
+pre::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+textarea::-webkit-scrollbar-track,
+pre::-webkit-scrollbar-track {
+  background: transparent;
+}
