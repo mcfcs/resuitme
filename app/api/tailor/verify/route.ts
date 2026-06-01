@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAnthropic, MODEL_FAST } from "@/lib/anthropic";
+import { getAnthropic, MODEL } from "@/lib/anthropic";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     const client = getAnthropic();
 
     const response = await client.messages.create({
-      model: MODEL_FAST,
+      model: MODEL,
       max_tokens: 4000,
       system: SYSTEM_PROMPT,
       output_config: {

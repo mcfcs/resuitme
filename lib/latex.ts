@@ -3,6 +3,17 @@
 // original resume is longer than one page.
 export const MAX_ONE_PAGE_CHARS = 4500;
 
+// Lower bound on the budget. Prevents a too-short input (e.g. the placeholder
+// template, or a sparse pasted resume) from producing a starvation budget that
+// yields a quarter-page result. Calibrated against real one-page resumes,
+// which measure ~3,500 visible chars with visibleText() below.
+export const MIN_ONE_PAGE_CHARS = 2800;
+
+// Calibrated "comfortably full one page" target. Used by Build mode when there
+// is no real base resume to anchor to — so we compose against a real page's
+// worth of content instead of whatever the placeholder template happens to be.
+export const TARGET_ONE_PAGE_CHARS = 3600;
+
 // Safety margin baked into the budget we send to the model. The measured
 // visibleChars of the template approximates one-page capacity, but real LaTeX
 // rendering can overflow on borderline counts. By telling the model the
@@ -41,6 +52,13 @@ export function visibleText(latex: string): string {
   // Treat \\ as a soft newline.
   s = s.replace(/\\\\/g, "\n");
 
+  // Drop the hidden URL target of \href{url}{anchor} — only the anchor text
+  // renders, so counting the url over-estimates length and over-trims. The url
+  // contains no braces, so this non-nested match is safe; the remaining
+  // {anchor} group is handled by the normal command/brace stripping below.
+  // (\url{x} is intentionally left alone — there the url IS the rendered text.)
+  s = s.replace(/\\href\s*\{[^{}]*\}/g, "");
+
   // Strip remaining \command, \command*, and any [optional] arg blocks.
   // Loop a few times to handle adjacent commands (\textbf{\large Title}).
   for (let i = 0; i < 6; i++) {
@@ -73,7 +91,9 @@ export function visibleWords(latex: string): number {
  * Compute the visible-char budget for a tailored resume given the original.
  * Applies SAFETY_MARGIN so the model has tighter constraints than the actual
  * one-page capacity — even if the model overshoots its target, the real
- * output still fits.
+ * output still fits. Clamps to [MIN_ONE_PAGE_CHARS, MAX_ONE_PAGE_CHARS] so a
+ * too-short original can't starve the budget and a too-long one can't blow
+ * past a single page.
  */
 export function computeOnePageBudget(originalLatex: string): {
   budget: number;
@@ -82,9 +102,35 @@ export function computeOnePageBudget(originalLatex: string): {
 } {
   const originalChars = visibleChars(originalLatex);
   const capped = originalChars > MAX_ONE_PAGE_CHARS;
-  const targetChars = capped ? MAX_ONE_PAGE_CHARS : originalChars;
-  const budget = Math.floor(targetChars * SAFETY_MARGIN);
+  const clamped = Math.min(
+    Math.max(originalChars, MIN_ONE_PAGE_CHARS),
+    MAX_ONE_PAGE_CHARS,
+  );
+  const budget = Math.floor(clamped * SAFETY_MARGIN);
   return { budget, originalChars, capped };
+}
+
+/**
+ * Budget for Build mode (compose-from-scratch). Build has no resume to anchor
+ * to — only a layout template, whose inline content is placeholder text. If we
+ * anchored to that, the budget would be ~700 chars and the output would fill a
+ * quarter page. So: anchor to the user's saved base resume only when it's a
+ * real (non-trivial) document; otherwise compose against a calibrated full-page
+ * target.
+ */
+export function computeBuildBudget(baseResumeLatex?: string): {
+  budget: number;
+  originalChars: number;
+  capped: boolean;
+} {
+  if (baseResumeLatex && baseResumeLatex.trim()) {
+    const chars = visibleChars(baseResumeLatex);
+    if (chars >= MIN_ONE_PAGE_CHARS) {
+      return computeOnePageBudget(baseResumeLatex);
+    }
+  }
+  const budget = Math.floor(TARGET_ONE_PAGE_CHARS * SAFETY_MARGIN);
+  return { budget, originalChars: 0, capped: false };
 }
 
 export function isWithinBudget(

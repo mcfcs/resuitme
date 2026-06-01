@@ -125,22 +125,39 @@ Suggested edits: ${analysis.suggestions.join("; ")}
 `
       : "";
 
+    // Merge analyzer-flagged missing keywords into the honesty map as hard
+    // "none" — but only for keywords the user hasn't already given an explicit
+    // verdict for. Mirrors /api/build so both flows treat analyzer-detected
+    // gaps as a hard block rather than a soft suggestion.
+    const mergedHonest: HonestSignals = honest
+      ? { ...honest, perKeyword: { ...honest.perKeyword } }
+      : { perKeyword: {} };
+    if (analysis?.keyword_coverage?.missing) {
+      for (const kw of analysis.keyword_coverage.missing) {
+        if (!(kw in mergedHonest.perKeyword)) {
+          mergedHonest.perKeyword[kw] = "none";
+        }
+      }
+    }
+
     let honestBlock = "";
-    if (honest) {
+    {
       const have: string[] = [];
       const partial: string[] = [];
       const none: string[] = [];
-      for (const [k, v] of Object.entries(honest.perKeyword ?? {})) {
+      for (const [k, v] of Object.entries(mergedHonest.perKeyword)) {
         if (v === "have") have.push(k);
         else if (v === "partial") partial.push(k);
         else if (v === "none") none.push(k);
       }
-      honestBlock = `\n=== HONESTY SIGNALS (HARD CONSTRAINTS — apply strictly) ===
+      if (have.length + partial.length + none.length > 0) {
+        honestBlock = `\n=== HONESTY SIGNALS (HARD CONSTRAINTS — apply strictly) ===
 Skills/keywords the candidate HAS (safe to emphasize): ${have.length ? have.join(", ") : "(none specified)"}
 Skills/keywords the candidate has PARTIAL/limited experience with (only mention if evidence exists, never as headline expertise): ${partial.length ? partial.join(", ") : "(none specified)"}
 Skills/keywords the candidate DOES NOT HAVE (NEVER include, NEVER paraphrase, omit entirely): ${none.length ? none.join(", ") : "(none specified)"}
-${honest.notes?.trim() ? `Candidate's notes about their experience: ${honest.notes.trim()}` : ""}
+${mergedHonest.notes?.trim() ? `Candidate's notes about their experience: ${mergedHonest.notes.trim()}` : ""}
 `;
+      }
     }
 
     let profileBlock = "";

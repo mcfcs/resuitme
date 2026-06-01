@@ -51,10 +51,16 @@ MUST_INCLUDE FORMAT — strict:
 
 Each item MUST name a specific project, role title, award name, or thesis title. Generic category labels are never acceptable.
 
-BAD:  { "item": "ML experience", "reason": "Shows technical skills" }
-GOOD: { "item": "Bank Loan Approval Prediction Model", "reason": "Demonstrates PyTorch, imbalanced classification, and ablation experiments — all JD must-haves." }
+(The names below are illustrative placeholders — DO NOT treat them as real items or let them influence which of the candidate's actual items you select. Only ever name items that genuinely appear in the candidate's input.)
 
-Produce 3-5 entries, ordered by impact (highest first). Vary the kinds of items — don't put all five in one bucket unless the candidate's content really concentrates there. Each reason is one sentence (~25 words max) citing the specific JD requirement(s) the item satisfies.
+BAD:  { "item": "ML experience", "reason": "Shows technical skills" }
+GOOD: { "item": "Project Atlas (forecasting engine)", "reason": "Demonstrates PyTorch, imbalanced classification, and ablation experiments — all JD must-haves." }
+
+Produce 3-5 entries, ordered by impact (highest first). Match the MIX of items to the JD's emphasis: if the JD concentrates on one theme (e.g. a security-heavy role), it is correct to pick several items in that theme; if the JD spans several distinct areas, spread the picks to cover them. Do not spread for its own sake, and do not concentrate for its own sake — let the JD's weighting decide.
+
+RANKING TIEBREAKER — when two items satisfy the JD at the same relevance tier, the item that satisfies MORE distinct JD requirements at once wins the higher slot. An item that maps to a must-have AND a required skill AND a named preferred-qualification outranks an item that maps to a single requirement, even if the single-requirement item is a slightly stronger example of that one thing. Coverage breadth across the JD breaks ties in favor of inclusion.
+
+Each reason is one sentence (~25 words max) citing the specific JD requirement(s) the item satisfies — when an item covers multiple, name them.
 
 EXAMPLE OUTPUT SHAPE — your response must match this structure exactly:
 {
@@ -67,12 +73,13 @@ EXAMPLE OUTPUT SHAPE — your response must match this structure exactly:
     "missing": ["kubernetes", "go"],
     "partial": ["aws"]
   },
-  "suggestions": ["Drop the older retail role to make room for...", "Lead with the Bank Loan project..."],
+  "suggestions": ["Drop the older retail role to make room for...", "Lead with the strongest JD-aligned project..."],
   "must_include": [
-    { "item": "Bank Loan Approval Prediction Model", "reason": "Demonstrates PyTorch, imbalanced classification, and ablation experiments — all JD must-haves." },
-    { "item": "aCount Sneaker Resale Platform", "reason": "Full-stack production system with OAuth, reconciliation logic — matches the platform-engineer scope of the role." }
+    { "item": "Project Atlas (forecasting engine)", "reason": "Demonstrates PyTorch, imbalanced classification, and ablation experiments — all JD must-haves." },
+    { "item": "Helios Checkout Platform", "reason": "Full-stack production system with OAuth, reconciliation logic — matches the platform-engineer scope of the role." }
   ]
 }
+(Reminder: "Project Atlas" and "Helios Checkout Platform" are fictional examples shown only to illustrate the JSON shape. Never output these names; name only the candidate's real items.)
 
 Respond with a JSON object matching this exact structure. Do not include any prose outside the JSON.`;
 

@@ -10,6 +10,7 @@ import {
   MAX_TRIM_PASSES,
   visibleChars,
 } from "@/lib/latex";
+import { checkPageCount, cutTarget } from "@/lib/render";
 
 type Phase = "input" | "analyzed" | "honesty" | "tailoring" | "tailored";
 
@@ -23,6 +24,9 @@ type BudgetInfo = {
   iterations: number;
   cutsApplied: string[];
   fits: boolean;
+  // Real page count from the compile, or null when rendering was unavailable
+  // and we fell back to the visible-char heuristic.
+  pages: number | null;
 };
 
 export default function Home() {
@@ -31,7 +35,7 @@ export default function Home() {
 
   const [phase, setPhase] = useState<Phase>("input");
   const [busy, setBusy] = useState<
-    null | "analyze" | "tailor" | "verify" | "trim" | "reanalyze"
+    null | "analyze" | "tailor" | "render" | "verify" | "trim" | "reanalyze"
   >(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,13 +130,16 @@ export default function Home() {
           }),
         });
 
-      // Multi-pass tailor + verify/trim loop. Stop early when under budget,
-      // otherwise keep applying fresh cuts until MAX_TRIM_PASSES.
+      // Multi-pass tailor + render/verify/trim loop. The REAL page count from a
+      // compile is authoritative for "fits one page"; the visible-char budget
+      // is only a fallback (when rendering is unavailable) and a cut-sizing aid.
       let tailored = "";
       let chars = 0;
       let iterations = 0;
       let allCutsApplied: string[] = [];
       let currentCuts: string[] | undefined = undefined;
+      let pages: number | null = null;
+      let fits = false;
 
       while (iterations < MAX_TRIM_PASSES) {
         setBusy(iterations === 0 ? "tailor" : "trim");
@@ -147,14 +154,36 @@ export default function Home() {
         chars = visibleChars(tailored);
         iterations += 1;
 
-        // Under budget — done.
-        if (chars <= budget) break;
+        // Authoritative check: compile and count real pages.
+        setBusy("render");
+        const check = await checkPageCount(tailored);
+        pages = check.pages;
+
+        if (check.measured && pages !== null) {
+          // Ground truth. One page (or zero, degenerate) → done.
+          if (pages <= 1) {
+            fits = true;
+            break;
+          }
+          // Genuinely over one page — fall through to request cuts.
+        } else {
+          // Couldn't render/compile — fall back to the char-budget heuristic.
+          if (chars <= budget) {
+            fits = true;
+            break;
+          }
+          if (isWithinBudget(chars, budget, 0.005)) {
+            fits = true;
+            break;
+          }
+        }
+
         // Out of passes — surface what we have.
         if (iterations >= MAX_TRIM_PASSES) break;
-        // Borderline overshoot (within tight tolerance) — don't burn another trim pass.
-        if (isWithinBudget(chars, budget, 0.005)) break;
 
-        // Ask the verifier for fresh cuts against THIS latest LaTeX.
+        // Ask the verifier for fresh cuts against THIS latest LaTeX. Size the
+        // target from the real overflow when the heuristic underestimated.
+        const overBy = cutTarget(pages, chars - budget, budget);
         setBusy("verify");
         const verifyRes = await fetch("/api/tailor/verify", {
           method: "POST",
@@ -164,7 +193,7 @@ export default function Home() {
             jobDescription,
             budget,
             currentChars: chars,
-            overBy: chars - budget,
+            overBy,
           }),
         });
         const verifyData = await verifyRes.json();
@@ -187,8 +216,8 @@ export default function Home() {
         capped,
         iterations,
         cutsApplied: allCutsApplied,
-        // Strict: must be under budget (no tolerance) to claim "fits".
-        fits: chars <= budget,
+        pages,
+        fits,
       });
 
       // Auto-reanalyze the (possibly trimmed) tailored version.
@@ -456,11 +485,13 @@ export default function Home() {
           <div className="font-display text-xl text-paper/85">
             {busy === "tailor"
               ? "Tailoring your résumé…"
-              : busy === "verify"
-                ? "Checking the one-page budget…"
-                : busy === "trim"
-                  ? "Trimming to fit one page…"
-                  : "Re-analyzing the tailored version…"}
+              : busy === "render"
+                ? "Compiling to PDF to check the real page count…"
+                : busy === "verify"
+                  ? "Planning cuts to fit one page…"
+                  : busy === "trim"
+                    ? "Trimming to fit one page…"
+                    : "Re-analyzing the tailored version…"}
           </div>
           <div className="mt-2 text-xs text-paper/40">
             This typically takes 30–60 seconds.
@@ -564,8 +595,10 @@ export default function Home() {
         </span>
         <span className="max-w-xl md:text-right leading-relaxed">
           Powered by Claude. Your résumé and job description are sent to
-          Anthropic for analysis and rewriting; nothing is stored on this
-          server. Profile data lives only in your browser&apos;s localStorage.
+          Anthropic for analysis and rewriting. To verify the one-page fit, the
+          draft LaTeX is also compiled by an external rendering service. Nothing
+          is stored on this server; profile data lives only in your
+          browser&apos;s localStorage.
         </span>
       </footer>
     </main>
@@ -575,32 +608,54 @@ export default function Home() {
 function BudgetBadge({ info }: { info: BudgetInfo }) {
   const pct = info.budget > 0 ? info.tailoredChars / info.budget : 0;
   const overBy = info.tailoredChars - info.budget;
+  // Real page count is authoritative when present; char budget is the fallback.
+  const measured = info.pages !== null;
   const tone = info.fits
     ? "border-sage-500/40 bg-sage-500/10 text-sage-300"
     : "border-red-500/50 bg-red-500/15 text-red-200";
   const icon = info.fits ? "✓" : "⚠";
+  const verdict = measured
+    ? info.fits
+      ? "fits 1 page"
+      : `${info.pages} pages`
+    : info.fits
+      ? "fits 1 page (est.)"
+      : `over by ${overBy.toLocaleString()}`;
   return (
     <div
       title={
-        `Budget ${info.budget} visible chars (one-page heuristic, with 5% safety margin)\n` +
-        `Tailored ${info.tailoredChars} chars (${Math.round(pct * 100)}%)\n` +
+        (measured
+          ? `Compiled PDF: ${info.pages} page${info.pages === 1 ? "" : "s"} (real render — authoritative)\n`
+          : `Render unavailable — using visible-char heuristic\n`) +
+        `Budget ${info.budget} visible chars (one-page heuristic, 5% safety margin)\n` +
+        `Tailored ${info.tailoredChars} chars (${Math.round(pct * 100)}% of budget)\n` +
         (info.iterations > 1
-          ? `Trimmed in ${info.iterations} passes${info.cutsApplied.length ? ` — ${info.cutsApplied.length} cuts applied` : ""}`
+          ? `Resolved in ${info.iterations} passes${info.cutsApplied.length ? ` — ${info.cutsApplied.length} cuts applied` : ""}`
           : "Fit on the first pass") +
-        (info.fits ? "" : `\nOVER BY ${overBy} chars — likely overflows to a second page`)
+        (info.fits || measured
+          ? ""
+          : `\nOVER BY ${overBy} chars — likely overflows to a second page`)
       }
       className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-mono text-xs tabular-nums ${tone}`}
     >
       <span className="font-semibold">{icon}</span>
-      <span>
-        {info.tailoredChars.toLocaleString()}{" "}
-        <span className="opacity-50">/</span>{" "}
-        {info.budget.toLocaleString()}
-      </span>
-      <span className="opacity-50">·</span>
-      <span>
-        {info.fits ? "fits 1 page" : `over by ${overBy.toLocaleString()}`}
-      </span>
+      <span>{verdict}</span>
+      {measured && (
+        <>
+          <span className="opacity-50">·</span>
+          <span className="opacity-70">real render</span>
+        </>
+      )}
+      {!measured && (
+        <>
+          <span className="opacity-50">·</span>
+          <span>
+            {info.tailoredChars.toLocaleString()}
+            <span className="opacity-50">/</span>
+            {info.budget.toLocaleString()}
+          </span>
+        </>
+      )}
       {info.iterations > 1 && (
         <>
           <span className="opacity-50">·</span>
