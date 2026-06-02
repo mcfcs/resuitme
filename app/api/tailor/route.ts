@@ -22,6 +22,14 @@ CORE RULES — never break these:
 5. Preserve the candidate's voice. Don't make every bullet sound corporate.
 6. Don't keyword-stuff. If a JD term doesn't honestly apply, leave it out.
 
+SECTION ORDER — STRICT AND NON-NEGOTIABLE:
+- The tailored résumé's top-level \\section blocks MUST appear in EXACTLY this order: Summary, Education, Skills, Experience, Projects.
+- Summary and Education ALWAYS come first, in that order, before any other section. Never reorder them, never push them below Skills/Experience/Projects, even if the original resume had a different order — normalize it to this order.
+- Summary and Education are MANDATORY — they must ALWAYS be present, even when the budget is tight. Never omit them. If the original resume has no Summary section, COMPOSE one (1-2 qualitative sentences reframing the candidate's existing experience for this JD — no invented facts or numbers). If budget is tight, tighten the Summary to a single sentence rather than dropping it.
+- Do NOT add, rename, split, or reorder these sections. Do NOT invent new top-level sections (no "Awards", "Certifications", "Leadership", etc.) — fold any such content into the five canonical sections or omit it.
+- The ONLY permitted deviation is OMITTING one of Skills / Experience / Projects that ends up with no content. When a section is omitted, the remaining sections KEEP this relative order.
+- Reordering for relevance applies ONLY to items/bullets WITHIN a section — never to the section sequence itself.
+
 PRIORITY-BASED CONTENT SELECTION — apply this systematically:
 
 Step 1 — Inventory. Mentally enumerate every distinct item in the source (resume + any broader profile context): each experience role, each project, each skill category, each thesis / award / publication.
@@ -72,7 +80,7 @@ BROADER PROFILE — when a unified profile is provided (merged from the candidat
 What you SHOULD do:
 - Rewrite bullets to lead with the outcome that matters most for this role.
 - Quantify impact where the original resume provides the numbers (never invent numbers).
-- Re-order sections or bullets so the most relevant experience appears first.
+- Re-order items and bullets WITHIN a section so the most relevant experience appears first (never reorder the top-level sections themselves — see SECTION ORDER above).
 - Use the JD's terminology when the candidate has genuinely done the equivalent work.
 - Aggressively drop, trim, and consolidate so the output fits the one-page budget.
 

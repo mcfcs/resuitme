@@ -1,0 +1,160 @@
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{amsmath}
+\input{glyphtounicode}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+\titleformat{\section}{
+  \vspace{-6pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-7pt}]
+
+\pdfgentounicode=1
+
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{\footnotesize #1} & \footnotesize #2 \\
+      \textit{\footnotesize #3} & \textit{\footnotesize #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \footnotesize #1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-6pt}}
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-7pt}}
+
+\begin{document}
+
+\begin{center}
+    \textbf{\Huge \scshape Gregorio Delfin Pascua} \\ \vspace{1pt}
+    \small +63 999-106-2601 $|$ 
+    \href{mailto:gregoriodelfinpascua@gmail.com}{\underline{gregoriodelfinpascua@gmail.com}} $|$ 
+    \href{https://linkedin.com/in/gregorio-delfin-pascua}{\underline{linkedin.com/in/gregorio-delfin-pascua}} $|$
+    \href{https://github.com/mcfcs}{\underline{github.com/mcfcs}}
+\end{center}
+
+\section{Summary}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     {Fourth-year CS student at Ateneo de Manila with experience building ML models, data pipelines, and production web apps including a financial platform automating real business accounting across international marketplaces.} \\
+}}
+ \end{itemize}
+
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Ateneo de Manila University}{Quezon City, PH}
+      {Bachelor of Science in Computer Science, GPA: 3.58/4.00}{August 2023 -- Expected 2027}
+    \resumeItemListStart
+      \resumeItem{Relevant Coursework: Big Data Processing, Pattern Recognition, Data Visualization}
+      \resumeItem{Honors: First Honors (3 semesters), Second Honors (2 semesters)}
+    \resumeItemListEnd
+  \resumeSubHeadingListEnd
+
+\section{Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+    \textbf{Programming:} Python, SQL, Java, C++, JavaScript \\
+    \textbf{Data Analysis \& ML:} Pandas, NumPy, scikit-learn, PyTorch, Time Series Regression, Dimensionality Reduction \\
+    \textbf{Data Engineering \& Big Data:} Apache Spark, Hadoop, Hive, HBase, Apache Pig, MPI \\
+    \textbf{Data Visualization \& BI:} Matplotlib, Tableau \\
+    \textbf{Web Frameworks:} Django, React, Flask, Node.js \\ 
+    \textbf{Tools:} Git, VS Code, IntelliJ, Google Cloud, Google Dataproc, AWS, Supabase, Microsoft Excel, Google Workspace
+    }}
+ \end{itemize}
+
+\section{Extra-Curricular and Experience}
+  \resumeSubHeadingListStart
+\resumeSubheading
+      {IM Summit 2026 x Cisco Case Competition}{Mar 2026}
+      {1st Place, Team Leader}{Philippines}
+      \resumeItemListStart
+        \resumeItem{Led a 5-member team to design DigiTALINO, a modular digital governance platform using Master Data Management, hybrid cloud-local architecture, and Zero Trust security (NIST SP 800-207) with Cisco UGNAYAN 2030 tools for a 150K-resident Philippine municipality.}
+        \resumeItem{Proposed parallel e-Services workflow cutting permit processing from 10–15 days to 1–3 days, IoT flood monitoring with NLP-driven SMS citizen reporting, and an executive KPI dashboard within a ₱53M three-year budget.}
+      \resumeItemListEnd
+  
+    \resumeSubheading
+      {Finance Core Team Member}{November 2025 -- Present}
+      {CompSAt Connects 2026, Computer Society of the Ateneo}{Quezon City, PH}
+      \resumeItemListStart
+        \resumeItem{Coordinated concessionaire onboarding and MOA collection for a multi-day university career fair.}
+        \resumeItem{Managed payment collection, documentation, and financial record-keeping across participating concessionaires.}
+      \resumeItemListEnd
+
+    \resumeSubheading
+      {Independent E-commerce Operator (Retail)}{2020 -- Present}
+      {Self-Employed}{Philippines}
+      \resumeItemListStart
+        \resumeItem{Operated a sneaker resale business across local and international marketplaces including StockX and Alias, coordinating sourcing, authentication, and cross-border logistics.}
+        \resumeItem{Developed demand-based dynamic pricing strategies to maximize margins and inventory turnover.}
+      \resumeItemListEnd
+  \resumeSubHeadingListEnd
+
+\section{Projects}
+    \resumeSubHeadingListStart
+        \resumeProjectHeading
+          {\textbf{aCount: Sneaker Resale Accounting Platform} $|$ \emph{React, Flask, Supabase (PostgreSQL), Gmail API}}{}
+          \resumeItemListStart
+            \resumeItem{Built a full-stack financial management app that automates sale tracking by parsing Gmail e-receipts via OAuth 2.0, classifying emails by type and extracting order data across 10+ lifecycle states.}
+            \resumeItem{Implemented FIFO inventory matching, USD-to-PHP currency conversion, and bank transfer reconciliation logic to compute real profit from actual deposit amounts.}
+            \resumeItem{Designed a dashboard with real-time KPIs, sales-by-status breakdowns, shipment deadline alerts, and an action items feed surfacing critical orders.}
+          \resumeItemListEnd
+
+        \resumeProjectHeading
+          {\textbf{Bank Loan Approval Prediction Model} $|$ \emph{Python, PyTorch}}{}
+          \resumeItemListStart
+            \resumeItem{Designed a custom neural network architecture using SERF activations and ResNet-style skip connections for binary loan approval classification.}
+            \resumeItem{Achieved 0.9514 recall on loan approval detection in a class-imbalanced financial dataset, optimizing training convergence to reach target loss within 40 epochs through architecture tuning.}
+          \resumeItemListEnd
+    
+    \resumeProjectHeading
+        {\textbf{Crossword Puzzle Generator with Tagalog Implementation} $|$ \emph{React, Node.js, Python} $|$ \href{https://crossword-app-alpha.vercel.app/}{\underline{Live Demo}}}{}
+        \resumeItemListStart
+            \resumeItem{Developed a full-stack crossword generator with a constraint-based backtracking algorithm, Wave Function Collapse and frequency-based difficulty scoring across 700,000+ clues.}
+            \resumeItem{Built a Tagalog implementation by preprocessing dictionary datasets and matching synonymous meanings to generate Tagalog-to-Tagalog clues.}
+        \resumeItemListEnd
+    \resumeSubHeadingListEnd
+
+\end{document}

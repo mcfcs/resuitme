@@ -6,7 +6,7 @@ export type BuiltinTemplate = {
 };
 
 // Classic 1-page CS résumé layout — clean preamble with custom \resume* macros,
-// section order Summary → Education → Skills → Projects → Experience.
+// section order Summary → Education → Skills → Experience → Projects.
 // Inline content is intentionally placeholder so the build model recognizes
 // it as a starter to be filled, not as the candidate's real content.
 const CLASSIC_LATEX = String.raw`\documentclass[letterpaper,11pt]{article}
@@ -114,6 +114,17 @@ const CLASSIC_LATEX = String.raw`\documentclass[letterpaper,11pt]{article}
     }}
  \end{itemize}
 
+\section{Experience}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Company or Organization}{Dates}
+      {Role or Title}{Location}
+      \resumeItemListStart
+        \resumeItem{Bullet describing scope, responsibilities, and impact.}
+        \resumeItem{Second bullet with a quantified outcome.}
+      \resumeItemListEnd
+  \resumeSubHeadingListEnd
+
 \section{Projects}
     \resumeSubHeadingListStart
         \resumeProjectHeading
@@ -131,17 +142,6 @@ const CLASSIC_LATEX = String.raw`\documentclass[letterpaper,11pt]{article}
           \resumeItemListEnd
     \resumeSubHeadingListEnd
 
-\section{Experience}
-  \resumeSubHeadingListStart
-    \resumeSubheading
-      {Company or Organization}{Dates}
-      {Role or Title}{Location}
-      \resumeItemListStart
-        \resumeItem{Bullet describing scope, responsibilities, and impact.}
-        \resumeItem{Second bullet with a quantified outcome.}
-      \resumeItemListEnd
-  \resumeSubHeadingListEnd
-
 \end{document}
 `;
 
@@ -150,7 +150,7 @@ export const TEMPLATES: Record<string, BuiltinTemplate> = {
     id: "classic",
     name: "Classic 1-page",
     description:
-      "Clean ATS-friendly LaTeX layout. Sections: Summary → Education → Skills → Projects → Experience.",
+      "Clean ATS-friendly LaTeX layout. Sections: Summary → Education → Skills → Experience → Projects.",
     latex: CLASSIC_LATEX,
   },
 };

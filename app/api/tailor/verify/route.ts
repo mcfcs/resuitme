@@ -44,9 +44,10 @@ WHAT TO CUT — in priority order, drop or trim:
 4. Lower-priority projects when the candidate already has stronger JD-aligned projects.
 5. Individual bullets that don't surface JD-relevant skills or quantified impact.
 6. Padding language inside bullets (adjectives, filler clauses).
-7. Multi-line objective/summary paragraphs — collapse to one sentence or remove.
+7. A multi-line Summary paragraph — collapse it to a single concise sentence. NEVER recommend removing the Summary section entirely; it is mandatory.
 
 WHAT NOT TO CUT:
+- The Summary section and the Education section — these are MANDATORY and must always remain (you may tighten the Summary to one sentence, but never drop it or the Education section).
 - Contact info, name, education with relevant credentials.
 - The single most recent JD-aligned role's strongest 2-3 bullets.
 - Skills explicitly listed in the JD (when the candidate has them).
