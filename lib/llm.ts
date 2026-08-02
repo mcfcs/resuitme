@@ -115,13 +115,24 @@ function ollamaKeepAlive(): string {
   return env("OLLAMA_KEEP_ALIVE") ?? "30m";
 }
 
+/** Reasoning control: an effort level, a boolean, or unset for the model default. */
+type ThinkSetting = boolean | "low" | "medium" | "high";
+
 /**
- * "true" / "false" force the model's reasoning mode; anything else (default)
- * omits the field so each model uses its own default. Forcing think:true on a
- * model without reasoning support makes Ollama reject the request outright.
+ * Reasoning mode. Unset (default) omits the field entirely so each model uses
+ * its own default — the safest option, because the accepted values vary by
+ * model family.
+ *
+ * Prefer the effort levels ("low" | "medium" | "high") over booleans:
+ *   - think:true on a model with no reasoning support is rejected outright.
+ *   - think:false CRASHES the llama-server subprocess for gpt-oss (observed:
+ *     "CUDA error: shared object initialization failed", taking the whole
+ *     model server down until it restarts). Use "low" to minimize reasoning
+ *     instead of trying to disable it.
  */
-function ollamaThink(): boolean | undefined {
+function ollamaThink(): ThinkSetting | undefined {
   const raw = env("OLLAMA_THINK")?.toLowerCase();
+  if (raw === "low" || raw === "medium" || raw === "high") return raw;
   if (raw === "true") return true;
   if (raw === "false") return false;
   return undefined;
@@ -211,7 +222,10 @@ async function ollamaChat(
     ? withSchemaInPrompt(args.messages, args.schema)
     : args.messages;
 
-  const think = args.thinking === false ? false : ollamaThink();
+  // Reasoning is controlled only by OLLAMA_THINK. args.thinking is an
+  // Anthropic-side hint and is deliberately NOT mapped to think:false here —
+  // see ollamaThink() for why that value is dangerous.
+  const think = ollamaThink();
 
   const body: Record<string, unknown> = {
     model,
@@ -290,9 +304,14 @@ async function ollamaChat(
 
   const content = stripThinkBlocks(data.message?.content ?? "");
   if (!content) {
+    // num_predict caps reasoning + answer combined, so a reasoning model can
+    // burn the entire budget before emitting a single content token.
+    const thoughtChars = data.message?.thinking?.length ?? 0;
     throw new LlmError(
-      `Model "${model}" returned empty content. If it is a reasoning model that spent its whole budget thinking, ` +
-        `raise max tokens or set OLLAMA_THINK=false.`,
+      `Model "${model}" returned empty content` +
+        (thoughtChars
+          ? ` after ${thoughtChars} characters of reasoning. The token budget was consumed by thinking before any answer was produced — raise max tokens or set OLLAMA_THINK=low.`
+          : `. Raise max tokens, or check the model is an instruct/chat model.`),
     );
   }
   return content;

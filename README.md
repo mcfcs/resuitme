@@ -26,6 +26,7 @@ LLM_PROVIDER=ollama
 OLLAMA_BASE_URL=http://100.102.10.69:11434
 OLLAMA_MODEL=gpt-oss:20b
 OLLAMA_NUM_CTX=32768
+OLLAMA_THINK=low
 ```
 
 On the machine running Ollama:
@@ -39,38 +40,56 @@ ollama pull gpt-oss:20b
 # ...and allow TCP 11434 through the firewall.
 ```
 
-### Choosing a model — size it to *usable* VRAM, not nameplate VRAM
+### Choosing a model — keep weights + KV cache under usable VRAM
 
-The single biggest performance factor is keeping the model **plus its KV cache** inside what the GPU can actually give you. Windows does not fail an oversized allocation; the NVIDIA driver silently spills the overflow into system RAM over PCIe, and Ollama still reports the model as 100% GPU-resident. The only visible symptom is that everything gets several times slower.
+The one hard constraint is that the model **plus its KV cache** must fit in VRAM. Windows does not fail an oversized allocation: the NVIDIA driver silently backs the overflow with system RAM over PCIe, and Ollama still reports the model as 100% GPU-resident. The only symptom is that generation gets roughly 7x slower.
 
-Measured on an RTX 5090 Laptop (24 GB nameplate), same model and prompt, varying only the context window:
+Measured on an RTX 5090 Laptop (24 GB), sweeping `num_ctx` on a single 8B model so that only the footprint changes:
 
 | Total VRAM in use | Generation speed |
 | ----------------- | ---------------- |
-| 15.9 GB           | 46 tok/s         |
-| 17.2 GB           | 39 tok/s         |
-| 17.9 GB           | 18.6 tok/s       |
-| 19.4 GB           | 9.2 tok/s        |
+| 5.5 GB            | 129 tok/s        |
+| 12.9 GB           | 127 tok/s        |
+| 16.7 GB           | 126 tok/s        |
+| 19.5 GB           | 127 tok/s        |
+| **20.5 GB**       | **18 tok/s**     |
 
-So on a 24 GB card, budget roughly **16 GB total** and pick weights around 12–14 GB. Two consequences worth knowing:
+So **usable VRAM is ~20 GB of the 24** — the rest is the normal desktop/compositor reserve. Speed is completely flat right up to the edge and then falls off a cliff; there is no gradual degradation to warn you.
 
-- **`gpt-oss:20b` (~13 GB) is the recommended default here.** Mixture-of-experts, so only ~3.6B parameters are active per token, giving large-model instruction-following at small-model speed. Strong at both constrained JSON and long, rule-heavy system prompts, which is exactly this app's workload.
-- **Avoid the 30B/32B Q4 builds on a 24 GB card**, tempting as they look. At ~18–19 GB they land squarely in the spill zone and end up *slower than a well-sized smaller model*, not faster.
+The practical rule: **stay under ~19.5 GB total, and treat anything above that as a hard error.** Within the limit, a bigger model is simply better — there is no speed penalty for using more of the card.
 
-Alternatives, in order of decreasing footprint:
+Two models were measured end-to-end on this app's actual routes:
 
-| Model             | Weights  | Notes                                                       |
-| ----------------- | -------- | ----------------------------------------------------------- |
-| `gpt-oss:20b`     | ~13 GB   | Recommended. MoE, 128k context, strong structured output.   |
-| `qwen3:14b`       | ~9 GB    | Dense, safe headroom, strong general instruction-following. |
-| `qwen3:8b`        | ~5 GB    | Fastest; noticeably weaker at the résumé-judgment prompts.  |
+| Model                             | @32k ctx | raw speed | `/api/analyze` | `/api/tailor` |
+| --------------------------------- | -------- | --------- | -------------- | ------------- |
+| **`gpt-oss:20b`** (MXFP4)         | 12.0 GB  | 146 tok/s | **9.4s**       | **3.8s**      |
+| Qwen3-Coder-30B-A3B (Q4_K_XL)     | 19.4 GB  | 195 tok/s | 15.5s          | 2.9s          |
 
-If you want more context headroom, halve the KV cache on the Ollama host:
+**`gpt-oss:20b` is the recommended default.** Despite the lower raw token rate it is faster on the analysis route, uses 7 GB less VRAM (leaving real headroom below the cliff), and was more accurate on the judgment that matters most here: given a résumé whose bullets mention a GitHub Actions CI pipeline, it correctly placed CI/CD in `present`, while the 30B put it in `missing`. That distinction is not cosmetic — the app converts analyzer-flagged missing keywords into hard "never mention this" constraints, so a false negative actively suppresses real experience from your tailored résumé.
+
+Both models respected the honesty constraints and produced the correct canonical section order.
+
+Larger context or a bigger model is fine as long as you stay under ~19.5 GB. To buy margin, drop `OLLAMA_NUM_CTX` or halve the KV cache on the Ollama host:
 
 ```bash
 OLLAMA_FLASH_ATTENTION=1
 OLLAMA_KV_CACHE_TYPE=q8_0
 ```
+
+### Reasoning effort matters more than model size
+
+`gpt-oss` is a reasoning model: it emits thinking tokens *before* any answer, and `num_predict` caps thinking and answer **combined**. Setting `OLLAMA_THINK=low` was the single biggest speedup measured:
+
+| `OLLAMA_THINK` | `/api/analyze` | `/api/tailor` |
+| -------------- | -------------- | ------------- |
+| `medium`       | 22.8s          | 37.9s         |
+| `low`          | **9.4s**       | **3.8s**      |
+
+Output quality was unchanged — same valid LaTeX, same honesty compliance, same section order. Leave it at `low`.
+
+> **Never set `OLLAMA_THINK=false` with gpt-oss.** It crashes the llama-server subprocess outright (`CUDA error: shared object initialization failed`) and takes the model host down until it restarts, which then surfaces as unrelated-looking failures on the next few requests. Use `low` to minimize reasoning.
+
+> If inference is ever inexplicably slow, check `size_vram` via `/api/ps` **and** confirm nothing else is using the GPU. Transient contention from another workload produces exactly the same symptom as an oversized model, and is easy to misdiagnose as one.
 
 Two more things that specifically bite on a local backend:
 
