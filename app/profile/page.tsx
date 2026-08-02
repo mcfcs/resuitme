@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import {
   clearProfile,
   loadProfile,
@@ -10,6 +9,7 @@ import {
   type Profile,
   type Source,
 } from "@/lib/profile";
+import SiteNav from "@/components/SiteNav";
 
 type DocKind = "resume" | "cv";
 
@@ -340,8 +340,8 @@ export default function ProfilePage() {
 
   if (!hydrated) {
     return (
-      <main className="min-h-screen px-6 py-10 max-w-5xl mx-auto">
-        <div className="text-paper/40 text-sm">Loading…</div>
+      <main className="mx-auto min-h-screen max-w-5xl px-4 py-10 px-safe pb-tabbar sm:px-6">
+        <div className="text-sm text-paper/40">Loading…</div>
       </main>
     );
   }
@@ -357,58 +357,51 @@ export default function ProfilePage() {
   if (profile.additionalSkills?.trim()) builtSources.push("notes");
 
   return (
-    <main className="min-h-screen px-6 py-8 md:py-12 max-w-5xl mx-auto">
-      <nav className="mb-12 flex items-center justify-between animate-fade-in">
-        <div className="flex items-center gap-5">
-          <Link
-            href="/"
-            className="eyebrow text-paper/60 hover:text-marigold border-b border-paper/15 hover:border-marigold pb-1 transition-colors"
-          >
-            Tailor mode
-          </Link>
-          <Link
-            href="/build"
-            className="eyebrow text-paper/60 hover:text-sage-300 border-b border-transparent hover:border-sage-400 pb-1 transition-colors"
-          >
-            Build mode
-          </Link>
-        </div>
-        <div className="flex items-center gap-4">
-          {profile.updatedAt && (
-            <span className="text-xs text-paper/40 tabular-nums">
-              Last saved {new Date(profile.updatedAt).toLocaleString()}
-            </span>
-          )}
-          <button
-            onClick={reset}
-            className="text-xs text-paper/50 hover:text-red-300 transition"
-          >
-            Clear profile
-          </button>
-        </div>
-      </nav>
+    <main className="mx-auto min-h-screen max-w-5xl px-4 py-6 px-safe pb-tabbar sm:px-6 md:py-12">
+      <SiteNav
+        trailing={
+          <>
+            {profile.updatedAt && (
+              <span className="hidden text-xs tabular-nums text-paper/40 lg:inline">
+                Last saved {new Date(profile.updatedAt).toLocaleString()}
+              </span>
+            )}
+            <button
+              onClick={reset}
+              className="shrink-0 text-xs text-paper/50 transition hover:text-red-300"
+            >
+              Clear profile
+            </button>
+          </>
+        }
+      />
 
-      <header className="mb-14 max-w-3xl">
+      <header className="mb-10 max-w-3xl md:mb-14">
         <div
-          className="eyebrow text-marigold mb-5 animate-rise-in"
+          className="eyebrow mb-4 animate-rise-in text-marigold md:mb-5"
           style={{ animationDelay: "60ms" }}
         >
           Your source of truth
         </div>
         <h1
-          className="font-display text-5xl md:text-6xl font-medium leading-[0.95] tracking-tight animate-rise-in"
+          className="animate-rise-in font-display text-4xl font-medium leading-[1.02] tracking-tight sm:text-5xl md:text-6xl md:leading-[0.95]"
           style={{ animationDelay: "120ms" }}
         >
           Your <span className="italic text-marigold">profile</span>
         </h1>
         <p
-          className="mt-6 text-lg text-paper/65 leading-relaxed max-w-xl animate-rise-in"
+          className="mt-5 max-w-xl animate-rise-in text-base leading-relaxed text-paper/65 md:mt-6 md:text-lg"
           style={{ animationDelay: "220ms" }}
         >
           Paste your base résumé, base CV, and any extra skills. Resuitme merges
           them into one unified profile — deduplicating shared entries and
           combining bullets where the résumé and CV overlap.
         </p>
+        {profile.updatedAt && (
+          <p className="mt-3 text-xs tabular-nums text-paper/40 lg:hidden">
+            Last saved {new Date(profile.updatedAt).toLocaleString()}
+          </p>
+        )}
       </header>
 
       {error && (
@@ -433,11 +426,11 @@ export default function ProfilePage() {
         onFile={(f) => handleFile("cv", f)}
       />
 
-      <section className="mb-12">
-        <h2 className="font-display text-2xl font-medium mb-1.5">
+      <section className="mb-10 md:mb-12">
+        <h2 className="mb-1.5 font-display text-xl font-medium sm:text-2xl">
           Additional skills &amp; notes
         </h2>
-        <p className="text-sm text-paper/60 mb-4 max-w-2xl leading-relaxed">
+        <p className="mb-4 max-w-2xl text-sm leading-relaxed text-paper/60">
           Anything you have that isn&apos;t on your résumé or CV. Tools,
           languages, projects, in-progress certifications. Free form. Merged in
           and tagged as &quot;notes&quot;.
@@ -455,15 +448,17 @@ export default function ProfilePage() {
       </section>
 
       {/* AI-assisted CV addition */}
-      <section className="mb-12">
-        <div className="flex items-start justify-between flex-wrap gap-2 mb-3">
+      <section className="mb-10 md:mb-12">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div>
-            <div className="eyebrow text-marigold mb-2">Composed with Claude</div>
-            <h2 className="font-display text-2xl font-medium">Add to CV with AI</h2>
-            <p className="text-sm text-paper/60 mt-1.5 max-w-2xl leading-relaxed">
-              Describe a new experience, project, or other entry. Claude polishes
-              your input into clean CV-quality content, you review, and on
-              confirm it&apos;s inserted into your base CV LaTeX. Your résumé
+            <div className="eyebrow mb-2 text-marigold">AI-assisted</div>
+            <h2 className="font-display text-xl font-medium sm:text-2xl">
+              Add to CV with AI
+            </h2>
+            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-paper/60">
+              Describe a new experience, project, or other entry. The model
+              polishes your input into clean CV-quality content, you review, and
+              on confirm it&apos;s inserted into your base CV LaTeX. Your résumé
               stays untouched — the CV is the full source of truth.
             </p>
           </div>
@@ -491,11 +486,13 @@ export default function ProfilePage() {
         )}
       </section>
 
-      <div className="flex flex-wrap items-center gap-3 sticky bottom-4 backdrop-blur-md bg-ink/80 border border-paper/10 rounded-md px-4 py-3 z-10 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.8)]">
+      {/* Sticky action bar. On mobile it must clear the fixed tab bar, so it
+          sits ~4.75rem above the bottom edge instead of the desktop 1rem. */}
+      <div className="sticky bottom-[4.75rem] z-10 flex flex-wrap items-center gap-2 rounded-md border border-paper/10 bg-ink/90 px-3 py-3 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.8)] backdrop-blur-md sm:gap-3 sm:px-4 md:bottom-4">
         <button
           onClick={build}
           disabled={busy !== null || !hasAnyInput}
-          className="px-6 py-2.5 rounded-md bg-marigold text-ink font-semibold text-sm hover:bg-marigold-deep disabled:opacity-40 disabled:cursor-not-allowed transition shadow-[0_2px_18px_-6px_rgba(232,168,56,0.6)]"
+          className="flex-1 rounded-md bg-marigold px-6 py-2.5 text-sm font-semibold text-ink shadow-[0_2px_18px_-6px_rgba(232,168,56,0.6)] transition hover:bg-marigold-deep disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
         >
           {busy === "build"
             ? "Merging…"
@@ -506,14 +503,16 @@ export default function ProfilePage() {
         <button
           onClick={saveInputsOnly}
           disabled={busy !== null}
-          className="px-5 py-2.5 rounded-md border border-paper/15 text-sm text-paper/80 hover:bg-paper/5 hover:border-paper/30 disabled:opacity-40 transition"
+          className="flex-1 rounded-md border border-paper/15 px-5 py-2.5 text-sm text-paper/80 transition hover:border-paper/30 hover:bg-paper/5 disabled:opacity-40 sm:flex-none"
         >
           Save inputs only
         </button>
         {saved && (
-          <span className="text-xs text-sage-300">Saved to this browser.</span>
+          <span className="w-full text-xs text-sage-300 sm:w-auto">
+            Saved to this browser.
+          </span>
         )}
-        <span className="text-xs text-paper/40 ml-auto hidden md:block italic font-display">
+        <span className="ml-auto hidden font-display text-xs italic text-paper/40 md:block">
           Profile lives in your browser&apos;s localStorage.
         </span>
       </div>
@@ -521,9 +520,11 @@ export default function ProfilePage() {
       <div ref={profileViewRef} />
 
       {profile.parsed && (
-        <section className="mt-16">
-          <div className="flex items-baseline justify-between flex-wrap gap-3 mb-5">
-            <h2 className="font-display text-3xl font-medium">Merged profile</h2>
+        <section className="mt-12 md:mt-16">
+          <div className="mb-5 flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="font-display text-2xl font-medium sm:text-3xl">
+              Merged profile
+            </h2>
             <div className="flex items-center gap-2 text-xs text-paper/60">
               <span className="eyebrow text-paper/45">Built from</span>
               {builtSources.map((s) => (
@@ -553,15 +554,17 @@ function DocumentBlock({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   return (
-    <section className="mb-12">
-      <div className="flex items-start justify-between flex-wrap gap-2 mb-3">
-        <div>
-          <h2 className="font-display text-2xl font-medium">{title}</h2>
-          <p className="text-sm text-paper/60 mt-1.5 max-w-2xl leading-relaxed">
+    <section className="mb-10 md:mb-12">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="font-display text-xl font-medium sm:text-2xl">
+            {title}
+          </h2>
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-paper/60">
             {description}
           </p>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex shrink-0 gap-2">
           <input
             ref={fileRef}
             type="file"
@@ -571,7 +574,7 @@ function DocumentBlock({
           />
           <button
             onClick={() => fileRef.current?.click()}
-            className="px-3 py-1.5 rounded-md border border-paper/15 text-xs hover:bg-paper/5 hover:border-marigold/50 hover:text-marigold transition"
+            className="min-h-[2.5rem] rounded-md border border-paper/15 px-3 text-xs transition hover:border-marigold/50 hover:bg-paper/5 hover:text-marigold sm:min-h-0 sm:py-1.5"
           >
             Upload .tex
           </button>
@@ -581,10 +584,13 @@ function DocumentBlock({
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        spellCheck={false}
+        autoCapitalize="off"
+        autoCorrect="off"
         placeholder="Paste LaTeX source or upload a .tex file…"
-        className="w-full font-mono text-sm bg-ink-raised/60 border border-paper/10 rounded-md px-4 py-3 h-64 resize-y focus:outline-none focus:border-marigold/60 focus:ring-1 focus:ring-marigold/30 transition-colors placeholder:text-paper/25"
+        className="h-48 w-full resize-y rounded-md border border-paper/10 bg-ink-raised/60 px-4 py-3 font-mono text-sm transition-colors placeholder:text-paper/25 focus:border-marigold/60 focus:outline-none focus:ring-1 focus:ring-marigold/30 sm:h-64"
       />
-      <div className="text-xs text-paper/40 mt-1.5 tabular-nums">
+      <div className="mt-1.5 text-xs tabular-nums text-paper/40">
         {value.length.toLocaleString()} chars
       </div>
     </section>
@@ -620,13 +626,13 @@ function AddToCvPanel({
   const canPolish = hasRequiredFields(section, rough);
 
   return (
-    <div className="rounded-md border border-paper/10 bg-ink-raised/40 p-6">
-      <div className="flex items-center gap-3 mb-5 flex-wrap">
+    <div className="rounded-md border border-paper/10 bg-ink-raised/40 p-4 sm:p-6">
+      <div className="mb-5 flex flex-wrap items-center gap-3">
         <label className="eyebrow text-paper/50">Add a new</label>
         <select
           value={section}
           onChange={(e) => onSelectSection(e.target.value as PolishKind)}
-          className="text-sm bg-ink border border-paper/15 rounded-md px-3 py-1.5 focus:outline-none focus:border-marigold/60 transition-colors"
+          className="min-h-[2.75rem] flex-1 rounded-md border border-paper/15 bg-ink px-3 py-1.5 text-sm transition-colors focus:border-marigold/60 focus:outline-none sm:min-h-0 sm:flex-none"
         >
           {(Object.keys(SECTION_LABELS) as PolishKind[]).map((k) => (
             <option key={k} value={k} className="bg-neutral-900">
@@ -658,16 +664,16 @@ function AddToCvPanel({
       )}
 
       {!polished && (
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={onPolish}
             disabled={busy !== null || !canPolish}
-            className="px-4 py-2 rounded-md bg-marigold text-ink text-sm font-medium hover:bg-marigold-deep disabled:opacity-40 disabled:cursor-not-allowed transition"
+            className="w-full rounded-md bg-marigold px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-marigold-deep disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:py-2"
           >
             {busy === "polish" ? "Polishing…" : "Generate polished version"}
           </button>
           <span className="text-xs text-paper/40">
-            Claude rewrites your input into CV-quality content. You&apos;ll
+            The model rewrites your input into CV-quality content. You&apos;ll
             review before anything is added.
           </span>
         </div>
@@ -676,27 +682,25 @@ function AddToCvPanel({
       {polished && (
         <div className="mt-2 space-y-4">
           <PolishedPreview kind={section} data={polished} />
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={onCommit}
               disabled={busy !== null}
-              className="px-4 py-2 rounded-md bg-sage-500 text-ink text-sm font-medium hover:bg-sage-400 disabled:opacity-40 transition"
+              className="w-full rounded-md bg-sage-500 px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-sage-400 disabled:opacity-40 sm:w-auto sm:py-2"
             >
-              {busy === "insert"
-                ? "Inserting into CV…"
-                : "Add to CV"}
+              {busy === "insert" ? "Inserting into CV…" : "Add to CV"}
             </button>
             <button
               onClick={onPolish}
               disabled={busy !== null}
-              className="px-3 py-2 rounded-md border border-paper/15 text-xs text-paper/80 hover:bg-paper/5 disabled:opacity-40 transition"
+              className="flex-1 rounded-md border border-paper/15 px-3 py-2.5 text-xs text-paper/80 transition hover:bg-paper/5 disabled:opacity-40 sm:flex-none sm:py-2"
             >
               {busy === "polish" ? "Regenerating…" : "Regenerate"}
             </button>
             <button
               onClick={onDiscardPolish}
               disabled={busy !== null}
-              className="px-3 py-2 rounded-md border border-paper/10 text-xs text-paper/60 hover:bg-paper/5 disabled:opacity-40 transition"
+              className="flex-1 rounded-md border border-paper/10 px-3 py-2.5 text-xs text-paper/60 transition hover:bg-paper/5 disabled:opacity-40 sm:flex-none sm:py-2"
             >
               Discard
             </button>
@@ -899,10 +903,12 @@ function SourceBadges({ sources }: { sources: Source[] }) {
 
 function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
   return (
-    <div className="rounded-md border border-paper/10 bg-ink-raised/40 p-6 space-y-7">
+    <div className="space-y-7 rounded-md border border-paper/10 bg-ink-raised/40 p-4 sm:p-6">
       <div>
         {parsed.name && (
-          <h3 className="font-display text-3xl font-medium">{parsed.name}</h3>
+          <h3 className="font-display text-2xl font-medium sm:text-3xl">
+            {parsed.name}
+          </h3>
         )}
         {parsed.contact && (
           <div className="mt-1 text-sm text-paper/70 flex flex-wrap gap-x-4 gap-y-1">

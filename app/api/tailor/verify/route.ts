@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAnthropic, MODEL } from "@/lib/anthropic";
+import { completeJson, llmErrorResponse } from "@/lib/llm";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -79,15 +79,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing budget." }, { status: 400 });
     }
 
-    const client = getAnthropic();
-
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 4000,
+    const parsed = await completeJson<{
+      fits: boolean;
+      estimatedReduction: number;
+      suggestedCuts: string[];
+      rationale: string;
+    }>({
+      tier: "primary",
+      maxTokens: 4000,
       system: SYSTEM_PROMPT,
-      output_config: {
-        format: { type: "json_schema", schema: VERIFY_SCHEMA },
-      },
+      schema: VERIFY_SCHEMA,
       messages: [
         {
           role: "user",
@@ -106,36 +107,10 @@ Recommend specific cuts to bring this under the one-page budget. Return JSON mat
       ],
     });
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      return NextResponse.json(
-        { error: "Model returned no text content." },
-        { status: 502 },
-      );
-    }
-
-    let parsed: {
-      fits: boolean;
-      estimatedReduction: number;
-      suggestedCuts: string[];
-      rationale: string;
-    };
-    try {
-      parsed = JSON.parse(textBlock.text);
-    } catch {
-      return NextResponse.json(
-        {
-          error: "Model returned invalid JSON.",
-          raw: textBlock.text.slice(0, 2000),
-        },
-        { status: 502 },
-      );
-    }
-
     return NextResponse.json(parsed);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[/api/tailor/verify]", err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    const { error, status } = llmErrorResponse(err);
+    return NextResponse.json({ error }, { status });
   }
 }

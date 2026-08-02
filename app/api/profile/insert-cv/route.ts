@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAnthropic, MODEL_FAST } from "@/lib/anthropic";
+import { completeText, llmErrorResponse } from "@/lib/llm";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -57,11 +57,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const client = getAnthropic();
-
-    const response = await client.messages.create({
-      model: MODEL_FAST,
-      max_tokens: 16000,
+    const latex = await completeText({
+      tier: "fast",
+      maxTokens: 16000,
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -79,23 +77,10 @@ Return the complete updated LaTeX source. No code fences. No commentary.`,
       ],
     });
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      return NextResponse.json(
-        { error: "Model returned no text content." },
-        { status: 502 },
-      );
-    }
-
-    let latex = textBlock.text.trim();
-    if (latex.startsWith("```")) {
-      latex = latex.replace(/^```[a-zA-Z]*\n?/, "").replace(/```\s*$/, "");
-    }
-
     return NextResponse.json({ updatedCvLatex: latex });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[/api/profile/insert-cv]", err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    const { error, status } = llmErrorResponse(err);
+    return NextResponse.json({ error }, { status });
   }
 }

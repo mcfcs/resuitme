@@ -3,6 +3,26 @@ export type MustIncludePick = {
   reason: string;
 };
 
+/** Result of the one-page fitting loop, shared by tailor and build modes. */
+export type BudgetInfo = {
+  budget: number;
+  originalChars: number;
+  /** Visible-char count of the produced résumé. */
+  resultChars: number;
+  capped: boolean;
+  iterations: number;
+  cutsApplied: string[];
+  fits: boolean;
+  /**
+   * Real page count from the compile, or null when rendering was unavailable
+   * and we fell back to the visible-char heuristic.
+   */
+  pages: number | null;
+};
+
+/** Accent colour per mode: marigold for tailor, sage for build. */
+export type Accent = "marigold" | "sage";
+
 export type Analysis = {
   score: number;
   verdict: string;

@@ -2,12 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { Analysis, MustIncludePick } from "@/lib/types";
-import {
-  loadProfile,
-  profileToText,
-  type Profile,
-} from "@/lib/profile";
+import type { Analysis, BudgetInfo } from "@/lib/types";
+import { loadProfile, profileToText, type Profile } from "@/lib/profile";
 import {
   computeBuildBudget,
   isWithinBudget,
@@ -16,23 +12,13 @@ import {
 } from "@/lib/latex";
 import { checkPageCount, cutTarget } from "@/lib/render";
 import { getTemplate } from "@/lib/templates";
+import SiteNav from "@/components/SiteNav";
+import BackendFooter from "@/components/BackendFooter";
+import { AnalysisCard, ScorePill } from "@/components/Analysis";
+import HonestyPanel, { type HonestVerdict } from "@/components/HonestyPanel";
+import LatexResult from "@/components/LatexResult";
 
 type Phase = "input" | "analyzed" | "honesty" | "building" | "built";
-
-type HonestVerdict = "have" | "partial" | "none";
-
-type BudgetInfo = {
-  budget: number;
-  originalChars: number;
-  builtChars: number;
-  capped: boolean;
-  iterations: number;
-  cutsApplied: string[];
-  fits: boolean;
-  // Real page count from the compile, or null when rendering was unavailable
-  // and we fell back to the visible-char heuristic.
-  pages: number | null;
-};
 
 function getProfileAsResumeText(p: Profile): string {
   if (p.baseCvLatex?.trim()) return p.baseCvLatex;
@@ -50,12 +36,12 @@ export default function BuildPage() {
   >(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [profileFitAnalysis, setProfileFitAnalysis] =
-    useState<Analysis | null>(null);
+  const [profileFitAnalysis, setProfileFitAnalysis] = useState<Analysis | null>(
+    null,
+  );
   const [builtLatex, setBuiltLatex] = useState<string>("");
   const [builtAnalysis, setBuiltAnalysis] = useState<Analysis | null>(null);
 
-  const [copied, setCopied] = useState(false);
   const [budgetInfo, setBudgetInfo] = useState<BudgetInfo | null>(null);
 
   const [honest, setHonest] = useState<Record<string, HonestVerdict>>({});
@@ -122,8 +108,9 @@ export default function BuildPage() {
     setBusy("build");
     setPhase("building");
     try {
-      const { budget, originalChars, capped } =
-        computeBuildBudget(profile.baseResumeLatex);
+      const { budget, originalChars, capped } = computeBuildBudget(
+        profile.baseResumeLatex,
+      );
 
       const callBuild = (cuts?: string[]) =>
         fetch("/api/build", {
@@ -166,7 +153,8 @@ export default function BuildPage() {
         const data = await res.json();
         if (!res.ok) {
           throw new Error(
-            data.error ?? (iterations === 0 ? "Build failed" : "Trim pass failed"),
+            data.error ??
+              (iterations === 0 ? "Build failed" : "Trim pass failed"),
           );
         }
         built = data.latex as string;
@@ -232,7 +220,7 @@ export default function BuildPage() {
       setBudgetInfo({
         budget,
         originalChars,
-        builtChars: chars,
+        resultChars: chars,
         capped,
         iterations,
         cutsApplied: allCutsApplied,
@@ -259,44 +247,6 @@ export default function BuildPage() {
     }
   }
 
-  async function copyLatex() {
-    await navigator.clipboard.writeText(builtLatex);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-
-  function downloadLatex() {
-    const blob = new Blob([builtLatex], { type: "text/x-tex" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "resume-built.tex";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  function openInOverleaf(latex: string) {
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = "https://www.overleaf.com/docs";
-    form.target = "_blank";
-    form.rel = "noopener";
-    const snip = document.createElement("textarea");
-    snip.name = "snip";
-    snip.value = latex;
-    form.appendChild(snip);
-    const name = document.createElement("input");
-    name.type = "hidden";
-    name.name = "snip_name";
-    name.value = "Built Resume (Resuitme)";
-    form.appendChild(name);
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
-  }
-
   function reset() {
     setPhase("input");
     setProfileFitAnalysis(null);
@@ -319,57 +269,36 @@ export default function BuildPage() {
     });
   }
 
-  const canAnalyze =
-    hasProfileContent && jobDescription.trim().length > 20;
+  const canAnalyze = hasProfileContent && jobDescription.trim().length > 20;
 
   return (
-    <main className="min-h-screen px-6 py-8 md:py-12 max-w-6xl mx-auto">
-      <nav className="mb-12 flex items-center justify-between animate-fade-in">
-        <Link href="/" className="group flex items-baseline gap-0.5">
-          <span className="font-display text-2xl font-semibold tracking-tight">
-            Resuitme
-          </span>
-          <span className="font-display italic text-2xl text-marigold leading-none">
-            .
-          </span>
-        </Link>
-        <div className="flex items-center gap-5">
-          <Link
-            href="/"
-            className="eyebrow text-paper/60 hover:text-marigold border-b border-transparent hover:border-marigold pb-1 transition-colors"
-          >
-            Tailor mode
-          </Link>
-          <Link
-            href="/profile"
-            className="eyebrow text-paper/60 hover:text-marigold border-b border-paper/15 hover:border-marigold pb-1 transition-colors"
-          >
-            {profile?.updatedAt ? "Your profile →" : "Set up profile →"}
-          </Link>
-        </div>
-      </nav>
+    <main className="mx-auto min-h-screen max-w-6xl px-4 py-6 px-safe pb-tabbar sm:px-6 md:py-12">
+      <SiteNav />
 
-      <header className="mb-14 max-w-3xl">
+      <header className="mb-10 max-w-3xl md:mb-14">
         <div
-          className="eyebrow text-sage-400 mb-5 animate-rise-in"
+          className="eyebrow mb-4 animate-rise-in text-sage-400 md:mb-5"
           style={{ animationDelay: "60ms" }}
         >
           Build mode
         </div>
         <h1
-          className="font-display text-5xl md:text-7xl font-medium leading-[0.95] tracking-tight animate-rise-in"
+          className="animate-rise-in font-display text-4xl font-medium leading-[1.02] tracking-tight sm:text-5xl md:text-7xl md:leading-[0.95]"
           style={{ animationDelay: "120ms" }}
         >
           Build a résumé,{" "}
           <span className="italic text-sage-400">from scratch.</span>
         </h1>
         <p
-          className="mt-6 text-lg text-paper/65 leading-relaxed max-w-xl animate-rise-in"
+          className="mt-5 max-w-xl animate-rise-in text-base leading-relaxed text-paper/65 md:mt-6 md:text-lg"
           style={{ animationDelay: "220ms" }}
         >
           Paste a job post. Resuitme composes a one-page résumé from your full
           profile and CV — tailored to the role,{" "}
-          <em className="text-paper/90 not-italic font-medium">never invented</em>.
+          <em className="font-medium not-italic text-paper/90">
+            never invented
+          </em>
+          .
         </p>
       </header>
 
@@ -400,7 +329,7 @@ export default function BuildPage() {
         className="mb-6 animate-rise-in"
         style={{ animationDelay: "320ms" }}
       >
-        <label className="eyebrow text-paper/55 mb-2.5 block">
+        <label className="eyebrow mb-2.5 block text-paper/55">
           01 — Job description
         </label>
         <textarea
@@ -408,18 +337,18 @@ export default function BuildPage() {
           onChange={(e) => setJobDescription(e.target.value)}
           disabled={phase !== "input" && phase !== "analyzed"}
           placeholder="Paste the full job description here…"
-          className="w-full text-sm leading-relaxed bg-ink-raised/60 border border-paper/10 rounded-md px-4 py-3 h-72 resize-y focus:outline-none focus:border-sage-500/60 focus:ring-1 focus:ring-sage-500/30 disabled:opacity-60 transition-colors placeholder:text-paper/25"
+          className="h-56 w-full resize-y rounded-md border border-paper/10 bg-ink-raised/60 px-4 py-3 text-sm leading-relaxed transition-colors placeholder:text-paper/25 focus:border-sage-500/60 focus:outline-none focus:ring-1 focus:ring-sage-500/30 disabled:opacity-60 sm:h-72"
         />
-        <div className="mt-1.5 text-xs text-paper/40 tabular-nums">
+        <div className="mt-1.5 text-xs tabular-nums text-paper/40">
           {jobDescription.length.toLocaleString()} chars
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center gap-3 mb-16">
+      <div className="mb-12 flex flex-wrap items-center gap-3 md:mb-16">
         <button
           onClick={analyzeFit}
           disabled={!canAnalyze || busy !== null}
-          className="group px-6 py-3 rounded-md bg-sage-500 text-ink font-semibold text-sm hover:bg-sage-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-[0_2px_20px_-6px_rgba(116,160,94,0.7)] hover:shadow-[0_4px_28px_-6px_rgba(116,160,94,0.9)]"
+          className="w-full rounded-md bg-sage-500 px-6 py-3 text-sm font-semibold text-ink shadow-[0_2px_20px_-6px_rgba(116,160,94,0.7)] transition-all hover:bg-sage-400 hover:shadow-[0_4px_28px_-6px_rgba(116,160,94,0.9)] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
         >
           {busy === "analyze" ? "Analyzing fit…" : "Analyze fit"}
         </button>
@@ -427,13 +356,13 @@ export default function BuildPage() {
           <button
             onClick={reset}
             disabled={busy !== null}
-            className="px-5 py-3 rounded-md border border-paper/15 text-sm text-paper/70 hover:bg-paper/5 hover:border-paper/30 disabled:opacity-40 transition"
+            className="w-full rounded-md border border-paper/15 px-5 py-3 text-sm text-paper/70 transition hover:border-paper/30 hover:bg-paper/5 disabled:opacity-40 sm:w-auto"
           >
             Start over
           </button>
         )}
         {!canAnalyze && (
-          <span className="text-xs text-paper/40 italic font-display">
+          <span className="font-display text-xs italic text-paper/40">
             {!hasProfileContent
               ? "Build a profile first to use Build mode."
               : "Paste a job description to begin."}
@@ -443,12 +372,12 @@ export default function BuildPage() {
 
       {/* Profile fit analysis */}
       {profileFitAnalysis && (
-        <section className="mb-14 animate-rise-in">
-          <h2 className="font-display text-3xl font-medium mb-5 flex items-center gap-4 flex-wrap">
+        <section className="mb-12 animate-rise-in md:mb-14">
+          <h2 className="mb-5 flex flex-wrap items-center gap-3 font-display text-2xl font-medium sm:text-3xl md:gap-4">
             Your profile vs this job
             <ScorePill score={profileFitAnalysis.score} />
           </h2>
-          <AnalysisCard analysis={profileFitAnalysis} />
+          <AnalysisCard analysis={profileFitAnalysis} accent="sage" />
 
           {(phase === "analyzed" || phase === "honesty") && (
             <div className="mt-6">
@@ -463,17 +392,19 @@ export default function BuildPage() {
                   onContinue={build}
                   busy={busy !== null}
                   ctaLabel="Build the résumé honestly →"
+                  sourceNoun="your profile doesn't cover"
+                  outputNoun="built résumé"
                 />
               ) : (
                 <div className="flex flex-wrap items-center gap-3">
                   <button
                     onClick={build}
                     disabled={busy !== null}
-                    className="px-6 py-3 rounded-md bg-sage-500 text-ink font-semibold text-sm hover:bg-sage-400 disabled:opacity-40 transition"
+                    className="w-full rounded-md bg-sage-500 px-6 py-3 text-sm font-semibold text-ink transition hover:bg-sage-400 disabled:opacity-40 sm:w-auto"
                   >
                     Build my résumé for this job →
                   </button>
-                  <span className="text-xs text-paper/40 italic font-display">
+                  <span className="font-display text-xs italic text-paper/40">
                     No keyword gaps — straight build.
                   </span>
                 </div>
@@ -485,13 +416,13 @@ export default function BuildPage() {
 
       {/* Building state */}
       {phase === "building" && (
-        <section className="mb-14 rounded-md border border-sage-500/20 bg-ink-raised/40 p-10 text-center animate-fade-in">
-          <div className="flex justify-center gap-1.5 mb-5" aria-hidden>
-            <span className="h-2 w-2 rounded-full bg-sage-500 animate-bounce [animation-delay:-0.3s]" />
-            <span className="h-2 w-2 rounded-full bg-sage-500 animate-bounce [animation-delay:-0.15s]" />
-            <span className="h-2 w-2 rounded-full bg-sage-500 animate-bounce" />
+        <section className="mb-12 animate-fade-in rounded-md border border-sage-500/20 bg-ink-raised/40 p-6 text-center sm:p-10 md:mb-14">
+          <div className="mb-5 flex justify-center gap-1.5" aria-hidden>
+            <span className="h-2 w-2 animate-bounce rounded-full bg-sage-500 [animation-delay:-0.3s]" />
+            <span className="h-2 w-2 animate-bounce rounded-full bg-sage-500 [animation-delay:-0.15s]" />
+            <span className="h-2 w-2 animate-bounce rounded-full bg-sage-500" />
           </div>
-          <div className="font-display text-xl text-paper/85">
+          <div className="font-display text-lg text-paper/85 sm:text-xl">
             {busy === "build"
               ? "Building your résumé from profile…"
               : busy === "render"
@@ -503,7 +434,8 @@ export default function BuildPage() {
                     : "Scoring the built résumé…"}
           </div>
           <div className="mt-2 text-xs text-paper/40">
-            This typically takes 30–60 seconds.
+            This runs several model passes — expect 30–60s on a hosted model,
+            longer on a local one.
           </div>
         </section>
       )}
@@ -511,8 +443,8 @@ export default function BuildPage() {
       {/* Built result */}
       {phase === "built" && builtAnalysis && (
         <>
-          <section className="mb-14 animate-rise-in">
-            <h2 className="font-display text-3xl font-medium mb-5 flex items-center gap-4 flex-wrap">
+          <section className="mb-12 animate-rise-in md:mb-14">
+            <h2 className="mb-5 flex flex-wrap items-center gap-3 font-display text-2xl font-medium sm:text-3xl md:gap-4">
               Built résumé rating
               <ScorePill score={builtAnalysis.score} />
               {profileFitAnalysis && (
@@ -534,82 +466,27 @@ export default function BuildPage() {
                 </span>
               )}
             </h2>
-            <AnalysisCard analysis={builtAnalysis} />
+            <AnalysisCard analysis={builtAnalysis} accent="sage" />
           </section>
 
-          <section className="mb-14 animate-rise-in">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-3 flex-wrap">
-                <h2 className="font-display text-3xl font-medium">
-                  Built LaTeX
-                </h2>
-                {budgetInfo && <BudgetBadge info={budgetInfo} />}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={copyLatex}
-                  className="px-3 py-1.5 rounded-md border border-paper/15 text-xs hover:bg-paper/5 hover:border-paper/30 transition"
-                >
-                  {copied ? "Copied ✓" : "Copy"}
-                </button>
-                <button
-                  onClick={downloadLatex}
-                  className="px-3 py-1.5 rounded-md border border-paper/15 text-xs hover:bg-paper/5 hover:border-paper/30 transition"
-                >
-                  Download .tex
-                </button>
-                <button
-                  onClick={() => openInOverleaf(builtLatex)}
-                  className="px-3 py-1.5 rounded-md bg-sage-500 text-ink text-xs font-semibold hover:bg-sage-400 transition"
-                  title="Opens overleaf.com in a new tab with your LaTeX pre-loaded for an instant PDF preview."
-                >
-                  Open in Overleaf ↗
-                </button>
-              </div>
-            </div>
-            <pre className="font-mono text-xs bg-ink-raised/60 border border-paper/10 rounded-md p-5 max-h-[600px] overflow-auto whitespace-pre-wrap leading-relaxed">
-              {builtLatex}
-            </pre>
-            <p className="mt-2.5 text-xs text-paper/40">
-              Click <span className="text-sage-300">Open in Overleaf</span> for
-              an instant PDF preview in a new tab.
-            </p>
-            {budgetInfo &&
-              budgetInfo.iterations > 1 &&
-              budgetInfo.cutsApplied.length > 0 && (
-                <details className="mt-4 rounded-md border border-paper/10 bg-ink-raised/30 p-4 text-sm">
-                  <summary className="cursor-pointer text-paper/70 select-none">
-                    <span className="font-display italic text-paper/85">
-                      Trimmed to fit one page
-                    </span>
-                    <span className="text-paper/40 ml-2 text-xs">
-                      ({budgetInfo.cutsApplied.length}{" "}
-                      {budgetInfo.cutsApplied.length === 1 ? "cut" : "cuts"}{" "}
-                      applied)
-                    </span>
-                  </summary>
-                  <ul className="mt-3 space-y-1.5 text-paper/70 list-disc list-outside pl-5">
-                    {budgetInfo.cutsApplied.map((c, i) => (
-                      <li key={i}>{c}</li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-          </section>
+          <LatexResult
+            title="Built LaTeX"
+            latex={builtLatex}
+            filename="resume-built.tex"
+            overleafName="Built Resume (Resuitme)"
+            budgetInfo={budgetInfo}
+            accent="sage"
+            hint={
+              <>
+                Tap <span className="text-sage-300">Overleaf</span> for an
+                instant PDF preview in a new tab.
+              </>
+            }
+          />
         </>
       )}
 
-      <footer className="mt-20 pt-8 border-t border-paper/10 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-paper/40">
-        <span className="font-display italic text-sm text-paper/55">
-          Resuitme — build mode
-        </span>
-        <span className="max-w-xl md:text-right leading-relaxed">
-          Powered by Claude. Your profile and job description are sent to
-          Anthropic for analysis and composition. To verify the one-page fit,
-          the draft LaTeX is also compiled by an external rendering service.
-          Nothing is stored on this server.
-        </span>
-      </footer>
+      <BackendFooter label="Resuitme — build mode" />
     </main>
   );
 }
@@ -640,23 +517,23 @@ function TemplateCard({
 
   if (!hasProfileContent) {
     return (
-      <div className="rounded-md border border-orange-500/30 bg-orange-500/[0.04] p-5 flex items-start justify-between gap-4 flex-wrap">
-        <div className="flex-1 min-w-0">
-          <div className="eyebrow text-orange-300 mb-1.5">
+      <div className="flex flex-wrap items-start justify-between gap-4 rounded-md border border-orange-500/30 bg-orange-500/[0.04] p-4 sm:p-5">
+        <div className="min-w-0 flex-1">
+          <div className="eyebrow mb-1.5 text-orange-300">
             00 — No content pool
           </div>
           <div className="font-display text-base text-orange-100">
             Build a profile to use Build mode.
           </div>
-          <div className="text-xs text-paper/55 mt-1.5 leading-relaxed max-w-prose">
+          <div className="mt-1.5 max-w-prose text-xs leading-relaxed text-paper/55">
             Build mode composes a résumé entirely from your profile — parsed
-            entries, CV, and skill notes. Add anything to your profile to
-            unlock this mode.
+            entries, CV, and skill notes. Add anything to your profile to unlock
+            this mode.
           </div>
         </div>
         <Link
           href="/profile"
-          className="text-xs text-orange-200 hover:text-orange-100 border-b border-orange-300/30 hover:border-orange-200 pb-0.5 shrink-0"
+          className="shrink-0 border-b border-orange-300/30 pb-0.5 text-xs text-orange-200 hover:border-orange-200 hover:text-orange-100"
         >
           Set up profile →
         </Link>
@@ -665,48 +542,44 @@ function TemplateCard({
   }
 
   return (
-    <div className="rounded-md border border-sage-500/25 bg-sage-500/[0.04] p-5 flex items-start justify-between gap-4 flex-wrap">
-      <div className="flex-1 min-w-0">
-        <div className="eyebrow text-sage-400 mb-1.5">
-          00 — Template & content pool
+    <div className="flex flex-wrap items-start justify-between gap-4 rounded-md border border-sage-500/25 bg-sage-500/[0.04] p-4 sm:p-5">
+      <div className="min-w-0 flex-1">
+        <div className="eyebrow mb-1.5 text-sage-400">
+          00 — Template &amp; content pool
         </div>
         <div className="font-display text-base text-paper/90">
           {usingBuiltin ? (
             <>
-              Using the built-in{" "}
-              <span className="italic">{templateName}</span> template.
+              Using the built-in <span className="italic">{templateName}</span>{" "}
+              template.
             </>
           ) : (
             <>Using your saved base résumé as the LaTeX template.</>
           )}
         </div>
-        <div className="text-xs text-paper/55 mt-1.5 leading-relaxed max-w-prose">
+        <div className="mt-1.5 max-w-prose text-xs leading-relaxed text-paper/55">
           {usingBuiltin ? (
             <>
               {templateDescription}{" "}
               <Link
                 href="/profile"
-                className="text-sage-300 hover:text-sage-200 underline underline-offset-2"
+                className="text-sage-300 underline underline-offset-2 hover:text-sage-200"
               >
                 Save your own résumé LaTeX
               </Link>{" "}
               in your profile to use your layout instead.{" "}
             </>
           ) : (
-            <>Preamble, packages, and macros preserved.{" "}</>
+            <>Preamble, packages, and macros preserved. </>
           )}
           {hasParsed ? (
             <>
               Content pool —{" "}
-              <span className="text-paper/80 tabular-nums">
-                {counts!.exp}
-              </span>{" "}
+              <span className="tabular-nums text-paper/80">{counts!.exp}</span>{" "}
               experiences,{" "}
-              <span className="text-paper/80 tabular-nums">
-                {counts!.proj}
-              </span>{" "}
+              <span className="tabular-nums text-paper/80">{counts!.proj}</span>{" "}
               projects,{" "}
-              <span className="text-paper/80 tabular-nums">
+              <span className="tabular-nums text-paper/80">
                 {counts!.skills}
               </span>{" "}
               skills available.
@@ -720,390 +593,10 @@ function TemplateCard({
       </div>
       <Link
         href="/profile"
-        className="text-xs text-sage-300 hover:text-sage-200 border-b border-sage-500/30 hover:border-sage-400 pb-0.5 shrink-0"
+        className="shrink-0 border-b border-sage-500/30 pb-0.5 text-xs text-sage-300 hover:border-sage-400 hover:text-sage-200"
       >
         Edit profile →
       </Link>
     </div>
-  );
-}
-
-function BudgetBadge({ info }: { info: BudgetInfo }) {
-  const pct = info.budget > 0 ? info.builtChars / info.budget : 0;
-  const overBy = info.builtChars - info.budget;
-  // Real page count is authoritative when present; char budget is the fallback.
-  const measured = info.pages !== null;
-  const tone = info.fits
-    ? "border-sage-500/40 bg-sage-500/10 text-sage-300"
-    : "border-red-500/50 bg-red-500/15 text-red-200";
-  const icon = info.fits ? "✓" : "⚠";
-  const verdict = measured
-    ? info.fits
-      ? "fits 1 page"
-      : `${info.pages} pages`
-    : info.fits
-      ? "fits 1 page (est.)"
-      : `over by ${overBy.toLocaleString()}`;
-  return (
-    <div
-      title={
-        (measured
-          ? `Compiled PDF: ${info.pages} page${info.pages === 1 ? "" : "s"} (real render — authoritative)\n`
-          : `Render unavailable — using visible-char heuristic\n`) +
-        `Budget ${info.budget} visible chars (one-page heuristic, 5% safety margin)\n` +
-        `Built ${info.builtChars} chars (${Math.round(pct * 100)}% of budget)\n` +
-        (info.iterations > 1
-          ? `Resolved in ${info.iterations} passes${info.cutsApplied.length ? ` — ${info.cutsApplied.length} cuts applied` : ""}`
-          : "Fit on the first pass") +
-        (info.fits || measured
-          ? ""
-          : `\nOVER BY ${overBy} chars — likely overflows to a second page`)
-      }
-      className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-mono text-xs tabular-nums ${tone}`}
-    >
-      <span className="font-semibold">{icon}</span>
-      <span>{verdict}</span>
-      {measured && (
-        <>
-          <span className="opacity-50">·</span>
-          <span className="opacity-70">real render</span>
-        </>
-      )}
-      {!measured && (
-        <>
-          <span className="opacity-50">·</span>
-          <span>
-            {info.builtChars.toLocaleString()}
-            <span className="opacity-50">/</span>
-            {info.budget.toLocaleString()}
-          </span>
-        </>
-      )}
-      {info.iterations > 1 && (
-        <>
-          <span className="opacity-50">·</span>
-          <span>{info.iterations} passes</span>
-        </>
-      )}
-    </div>
-  );
-}
-
-function ScorePill({ score }: { score: number }) {
-  const color =
-    score >= 80
-      ? "bg-sage-500/15 text-sage-300 border-sage-500/40"
-      : score >= 60
-        ? "bg-marigold/15 text-marigold border-marigold/40"
-        : score >= 40
-          ? "bg-orange-500/15 text-orange-200 border-orange-500/40"
-          : "bg-red-500/15 text-red-200 border-red-500/40";
-  return (
-    <span
-      className={`inline-flex items-baseline gap-0.5 px-3 py-1 rounded-full border font-mono text-sm font-medium tabular-nums ${color}`}
-    >
-      <span className="text-base">{score}</span>
-      <span className="opacity-50 text-xs">/100</span>
-    </span>
-  );
-}
-
-function AnalysisCard({ analysis }: { analysis: Analysis }) {
-  return (
-    <div className="rounded-md border border-paper/10 bg-ink-raised/40 p-6 space-y-6">
-      <p className="font-display text-xl md:text-2xl italic leading-snug text-paper/90 border-l-2 border-sage-500/50 pl-4">
-        “{analysis.verdict}”
-      </p>
-
-      {analysis.must_include?.length > 0 && (
-        <MustIncludeBlock picks={analysis.must_include} />
-      )}
-
-      <div className="grid md:grid-cols-2 gap-6">
-        <Block title="Strengths" items={analysis.strengths} tone="positive" />
-        <Block title="Gaps" items={analysis.gaps} tone="negative" />
-      </div>
-
-      <Block title="Suggested edits" items={analysis.suggestions} />
-
-      <div className="grid md:grid-cols-3 gap-6 text-sm pt-1">
-        <KeywordRow
-          label="Keywords present"
-          words={analysis.keyword_coverage.present}
-          tone="positive"
-        />
-        <KeywordRow
-          label="Keywords partial"
-          words={analysis.keyword_coverage.partial}
-          tone="partial"
-        />
-        <KeywordRow
-          label="Keywords missing"
-          words={analysis.keyword_coverage.missing}
-          tone="negative"
-        />
-      </div>
-    </div>
-  );
-}
-
-function MustIncludeBlock({ picks }: { picks: MustIncludePick[] }) {
-  return (
-    <div className="rounded-md border border-sage-500/30 bg-sage-500/[0.05] p-5">
-      <div className="flex items-baseline justify-between gap-3 mb-3 flex-wrap">
-        <h3 className="font-display text-lg text-paper/95">
-          Top picks for this résumé
-        </h3>
-        <span className="eyebrow text-sage-400">
-          {picks.length} highest-impact items
-        </span>
-      </div>
-      <ol className="space-y-3">
-        {picks.map((p, i) => (
-          <li
-            key={i}
-            className="flex gap-3 items-start rounded border border-paper/5 bg-ink/30 px-3.5 py-3"
-          >
-            <span className="font-mono text-xs text-paper/40 tabular-nums shrink-0 mt-0.5">
-              {String(i + 1).padStart(2, "0")}
-            </span>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-paper/95">{p.item}</div>
-              <p className="text-sm text-paper/65 mt-1 leading-relaxed">
-                {p.reason}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
-}
-
-function Block({
-  title,
-  items,
-  tone,
-}: {
-  title: string;
-  items: string[];
-  tone?: "positive" | "negative";
-}) {
-  const dot =
-    tone === "positive"
-      ? "bg-sage-400"
-      : tone === "negative"
-        ? "bg-red-400"
-        : "bg-paper/40";
-  return (
-    <div>
-      <h3 className="eyebrow text-paper/55 mb-3">{title}</h3>
-      <ul className="space-y-2 text-sm text-paper/80 leading-relaxed">
-        {items.map((it, i) => (
-          <li key={i} className="flex gap-2.5">
-            <span
-              className={`mt-[7px] w-1.5 h-1.5 rounded-full shrink-0 ${dot}`}
-            />
-            <span>{it}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function KeywordRow({
-  label,
-  words,
-  tone,
-}: {
-  label: string;
-  words: string[];
-  tone: "positive" | "partial" | "negative";
-}) {
-  const chip =
-    tone === "positive"
-      ? "bg-sage-500/15 text-sage-200 border-sage-500/30"
-      : tone === "partial"
-        ? "bg-yellow-500/15 text-yellow-200 border-yellow-500/30"
-        : "bg-red-500/15 text-red-200 border-red-500/30";
-  return (
-    <div>
-      <div className="eyebrow text-paper/50 mb-2.5">{label}</div>
-      {words.length === 0 ? (
-        <div className="text-xs text-paper/40 italic font-display">none</div>
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {words.map((w, i) => (
-            <span
-              key={i}
-              className={`px-2 py-0.5 rounded border font-mono text-xs ${chip}`}
-            >
-              {w}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function HonestyPanel({
-  missing,
-  honest,
-  setVerdict,
-  setAllVerdicts,
-  honestNotes,
-  setHonestNotes,
-  onContinue,
-  busy,
-  ctaLabel,
-}: {
-  missing: string[];
-  honest: Record<string, HonestVerdict>;
-  setVerdict: (k: string, v: HonestVerdict) => void;
-  setAllVerdicts: (v: HonestVerdict) => void;
-  honestNotes: string;
-  setHonestNotes: (s: string) => void;
-  onContinue: () => void;
-  busy: boolean;
-  ctaLabel: string;
-}) {
-  const counts = { have: 0, partial: 0, none: 0 };
-  for (const v of Object.values(honest)) counts[v]++;
-
-  return (
-    <div className="rounded-md border border-sage-500/25 bg-sage-500/[0.05] p-6">
-      <div className="flex items-start justify-between flex-wrap gap-3 mb-5">
-        <div>
-          <div className="eyebrow text-sage-400 mb-2">The honesty check</div>
-          <h3 className="font-display text-2xl font-medium text-paper">
-            Be honest about these gaps
-          </h3>
-          <p className="text-sm text-paper/65 mt-2 max-w-2xl leading-relaxed">
-            For each keyword the JD wants but your profile doesn&apos;t cover,
-            tell us the truth. The built résumé will{" "}
-            <em className="text-paper/90 font-display">never</em> claim you
-            have something you marked as &quot;I don&apos;t.&quot;
-          </p>
-        </div>
-        <div className="flex gap-1 shrink-0">
-          <button
-            onClick={() => setAllVerdicts("have")}
-            className="text-xs px-2 py-1 rounded border border-sage-500/30 text-sage-200 hover:bg-sage-500/10"
-          >
-            All: have
-          </button>
-          <button
-            onClick={() => setAllVerdicts("partial")}
-            className="text-xs px-2 py-1 rounded border border-yellow-500/30 text-yellow-200 hover:bg-yellow-500/10"
-          >
-            All: partial
-          </button>
-          <button
-            onClick={() => setAllVerdicts("none")}
-            className="text-xs px-2 py-1 rounded border border-red-500/30 text-red-200 hover:bg-red-500/10"
-          >
-            All: none
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-1.5 mb-4">
-        {missing.map((kw) => {
-          const v = honest[kw] ?? "partial";
-          return (
-            <div
-              key={kw}
-              className="flex items-center justify-between gap-3 py-2 px-3.5 rounded bg-ink/40 border border-paper/5 hover:border-paper/10 transition-colors"
-            >
-              <span className="font-mono text-sm text-paper/90 truncate">
-                {kw}
-              </span>
-              <div className="flex gap-1 shrink-0">
-                <VerdictButton
-                  active={v === "have"}
-                  tone="have"
-                  onClick={() => setVerdict(kw, "have")}
-                >
-                  I have this
-                </VerdictButton>
-                <VerdictButton
-                  active={v === "partial"}
-                  tone="partial"
-                  onClick={() => setVerdict(kw, "partial")}
-                >
-                  Partial
-                </VerdictButton>
-                <VerdictButton
-                  active={v === "none"}
-                  tone="none"
-                  onClick={() => setVerdict(kw, "none")}
-                >
-                  I don&apos;t
-                </VerdictButton>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mb-5">
-        <label className="eyebrow text-paper/50 mb-2 block">
-          Notes about your experience (optional)
-        </label>
-        <textarea
-          value={honestNotes}
-          onChange={(e) => setHonestNotes(e.target.value)}
-          placeholder={`e.g. "I've used Postgres heavily but never DynamoDB" or "Familiar with Kubernetes concepts, never deployed one in production"`}
-          className="w-full text-sm bg-ink/40 border border-paper/10 rounded-md px-3.5 py-2.5 h-24 resize-y focus:outline-none focus:border-sage-500/50 focus:ring-1 focus:ring-sage-500/25 transition-colors placeholder:text-paper/25"
-        />
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-        <div className="font-mono text-xs text-paper/50 tabular-nums">
-          <span className="text-sage-300">{counts.have} have</span> ·{" "}
-          <span className="text-yellow-200">{counts.partial} partial</span> ·{" "}
-          <span className="text-red-300">{counts.none} skip</span>
-        </div>
-        <button
-          onClick={onContinue}
-          disabled={busy}
-          className="px-6 py-3 rounded-md bg-sage-500 text-ink font-semibold text-sm hover:bg-sage-400 disabled:opacity-40 transition shadow-[0_2px_18px_-6px_rgba(116,160,94,0.7)]"
-        >
-          {ctaLabel}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function VerdictButton({
-  active,
-  tone,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  tone: "have" | "partial" | "none";
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  const base = "text-xs px-2 py-1 rounded border transition whitespace-nowrap";
-  const styles: Record<typeof tone, string> = {
-    have: active
-      ? "bg-sage-500/30 border-sage-500/60 text-sage-100"
-      : "border-paper/10 text-paper/50 hover:border-sage-500/40 hover:text-sage-200",
-    partial: active
-      ? "bg-yellow-500/25 border-yellow-500/60 text-yellow-100"
-      : "border-paper/10 text-paper/50 hover:border-yellow-500/40 hover:text-yellow-200",
-    none: active
-      ? "bg-red-500/25 border-red-500/60 text-red-100"
-      : "border-paper/10 text-paper/50 hover:border-red-500/40 hover:text-red-200",
-  };
-  return (
-    <button onClick={onClick} className={`${base} ${styles[tone]}`}>
-      {children}
-    </button>
   );
 }

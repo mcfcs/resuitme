@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAnthropic, MODEL } from "@/lib/anthropic";
+import { completeJson, llmErrorResponse } from "@/lib/llm";
 import { ANALYSIS_SCHEMA, Analysis } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -104,19 +104,12 @@ export async function POST(req: NextRequest) {
         ? "CANDIDATE PROFILE / CV (full background)"
         : "RÉSUMÉ (LaTeX source)";
 
-    const client = getAnthropic();
-
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 16000,
-      thinking: { type: "adaptive" },
+    const parsed = await completeJson<Analysis>({
+      tier: "primary",
+      maxTokens: 16000,
+      thinking: true,
       system: SYSTEM_PROMPT,
-      output_config: {
-        format: {
-          type: "json_schema",
-          schema: ANALYSIS_SCHEMA,
-        },
-      },
+      schema: ANALYSIS_SCHEMA,
       messages: [
         {
           role: "user",
@@ -135,31 +128,10 @@ Return a JSON evaluation matching the schema.`,
       ],
     });
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      return NextResponse.json(
-        { error: "Model returned no text content." },
-        { status: 502 },
-      );
-    }
-
-    let parsed: Analysis;
-    try {
-      parsed = JSON.parse(textBlock.text);
-    } catch {
-      return NextResponse.json(
-        {
-          error: "Model returned invalid JSON.",
-          raw: textBlock.text.slice(0, 2000),
-        },
-        { status: 502 },
-      );
-    }
-
     return NextResponse.json({ analysis: parsed });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[/api/analyze]", err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    const { error, status } = llmErrorResponse(err);
+    return NextResponse.json({ error }, { status });
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAnthropic, MODEL } from "@/lib/anthropic";
+import { completeText, llmErrorResponse } from "@/lib/llm";
 import type { Analysis } from "@/lib/types";
 import type { ParsedProfile } from "@/lib/profile";
 
@@ -121,8 +121,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const client = getAnthropic();
-
     const analysisContext = analysis
       ? `\n=== PRIOR ANALYSIS (for prioritization, not for fabrication) ===
 Score: ${analysis.score}/100
@@ -210,10 +208,10 @@ ${cuts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 `
         : "";
 
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 16000,
-      thinking: { type: "adaptive" },
+    const latex = await completeText({
+      tier: "primary",
+      maxTokens: 16000,
+      thinking: true,
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -231,23 +229,10 @@ Return the complete tailored LaTeX source. No code fences. No commentary.`,
       ],
     });
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      return NextResponse.json(
-        { error: "Model returned no text content." },
-        { status: 502 },
-      );
-    }
-
-    let latex = textBlock.text.trim();
-    if (latex.startsWith("```")) {
-      latex = latex.replace(/^```[a-zA-Z]*\n?/, "").replace(/```\s*$/, "");
-    }
-
     return NextResponse.json({ latex });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[/api/tailor]", err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    const { error, status } = llmErrorResponse(err);
+    return NextResponse.json({ error }, { status });
   }
 }
