@@ -8,6 +8,7 @@
 // inside it is lib/trim-loop.ts.
 
 import { getTemplate } from "@/lib/templates";
+import { saveProfile } from "@/lib/profile";
 import SiteNav from "@/components/SiteNav";
 import BackendFooter from "@/components/BackendFooter";
 import { AnalysisCard, ScorePill } from "@/components/Analysis";
@@ -30,6 +31,8 @@ export default function BuildPage() {
     budgetInfo,
     ats,
     atsFindings,
+    templateId,
+    setTemplateId,
     honest,
     honestNotes,
     setHonestNotes,
@@ -45,7 +48,13 @@ export default function BuildPage() {
   } = useBuildPipeline();
 
   const usingBuiltinTemplate = !profile?.baseResumeLatex?.trim();
-  const template = getTemplate();
+  const template = getTemplate(templateId);
+
+  // Persist the layout choice alongside the profile so it survives a reload.
+  function selectTemplate(id: string) {
+    setTemplateId(id);
+    if (profile) saveProfile({ ...profile, templateId: id });
+  }
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-4 py-6 px-safe pb-tabbar sm:px-6 md:py-12">
@@ -96,6 +105,8 @@ export default function BuildPage() {
             hasProfileContent={hasProfileContent}
             templateName={template.name}
             templateDescription={template.description}
+            templateId={templateId}
+            onSelectTemplate={selectTemplate}
           />
         </section>
       )}

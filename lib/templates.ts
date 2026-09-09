@@ -1,8 +1,36 @@
+export type TemplateMacro = {
+  /** Command name without the leading backslash, e.g. "resumeSubheading". */
+  name: string;
+  /** Argument names in order, used to show the model the call shape. */
+  args: string[];
+  purpose: string;
+};
+
 export type BuiltinTemplate = {
   id: string;
   name: string;
   description: string;
   latex: string;
+  /**
+   * Canonical top-level section order for THIS layout. Single source of truth:
+   * it is injected into the generation prompts via the LAYOUT CONTRACT block
+   * (lib/prompts/layout-contract.ts) instead of being restated in each prompt.
+   */
+  sectionOrder: string[];
+  /** Sections that must never be dropped, however tight the budget. */
+  requiredSections: string[];
+  /** Sections this layout supports and may omit when there is no content. */
+  optionalSections: string[];
+  /** Layout macros the model must use verbatim rather than reinventing. */
+  macros: TemplateMacro[];
+  /** Placeholder strings that must not survive into generated output. */
+  placeholders: string[];
+  /**
+   * Visible-char count for a comfortably full single page in this layout.
+   * Denser layouts fit more. Measured with evals/measure-templates.ts, never
+   * guessed — see that script's header.
+   */
+  targetChars: number;
 };
 
 // Classic 1-page CS résumé layout — clean preamble with custom \resume* macros,
@@ -150,8 +178,53 @@ export const TEMPLATES: Record<string, BuiltinTemplate> = {
     id: "classic",
     name: "Classic 1-page",
     description:
-      "Clean ATS-friendly LaTeX layout. Sections: Summary → Education → Skills → Experience → Projects.",
+      "Single-column LaTeX layout with full-width sections. Verified to score 100/100 on the ATS text-extraction check.",
     latex: CLASSIC_LATEX,
+    sectionOrder: ["Summary", "Education", "Skills", "Experience", "Projects"],
+    requiredSections: ["Summary", "Education"],
+    optionalSections: ["Skills", "Experience", "Projects"],
+    macros: [
+      {
+        name: "resumeSubheading",
+        args: ["organization", "dates", "role", "location"],
+        purpose: "One experience or education entry's heading block.",
+      },
+      {
+        name: "resumeProjectHeading",
+        args: ["title with tech stack", "right-hand text (may be empty)"],
+        purpose: "One project's heading line.",
+      },
+      {
+        name: "resumeItem",
+        args: ["bullet text"],
+        purpose: "A single bullet under an entry.",
+      },
+      {
+        name: "resumeSubHeadingListStart / resumeSubHeadingListEnd",
+        args: [],
+        purpose: "Wraps the list of entries in a section.",
+      },
+      {
+        name: "resumeItemListStart / resumeItemListEnd",
+        args: [],
+        purpose: "Wraps the bullets under one entry.",
+      },
+    ],
+    placeholders: [
+      "Full Name",
+      "email@example.com",
+      "Institution Name",
+      "Degree Name",
+      "Company or Organization",
+      "Project Name",
+      "Tech Stack",
+      "Bullet describing scope",
+      "Category Two",
+    ],
+    // The real résumé in this layout measures 3,865 visible chars and compiles
+    // to exactly one page, so a full page is ~3,900. Kept at the previously
+    // calibrated 3,600 as a deliberately conservative compose target.
+    targetChars: 3600,
   },
 };
 

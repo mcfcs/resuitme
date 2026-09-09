@@ -7,7 +7,11 @@
 //  - The same honesty contract as the tailor prompt: nothing invented, no
 //    fabricated duration/quantity claims, and keywords the user disclaimed are
 //    hard constraints.
-//  - Canonical section order: Summary, Education, Skills, Experience, Projects.
+//  - Section order, mandatory/optional sections, layout macros and placeholder
+//    strings are supplied PER TEMPLATE by the LAYOUT CONTRACT block
+//    (lib/prompts/layout-contract.ts). The prompt guarantees the model follows
+//    that block exactly, and falls back to preserving the supplied template
+//    when no contract is present (a résumé the user brought themselves).
 //  - Output is a complete, compilable LaTeX document built on the supplied
 //    layout template.
 //  - Selection is driven by the analysis's must_include picks and the JD. Those
@@ -23,20 +27,21 @@ This is NOT a tailor-an-existing-document task. The candidate is not pasting a r
 CORE RULES — never break these:
 1. NEVER invent experience, skills, employers, dates, technologies, or accomplishments. Use ONLY content that appears in the profile.
 2. NEVER fabricate duration / quantity / count claims. Do not introduce phrases like "5+ years of experience", "10+ years in X", "100+ hours of Y", or any other minimum-duration/hours/count statement unless that EXACT figure already appears in the profile.
-3. Preserve the LaTeX TEMPLATE's preamble, document class, packages, and custom commands (\\\\resumeSubheading, \\\\resumeProjectHeading, \\\\resumeItem, etc.) EXACTLY as written. The output must compile with the same toolchain.
+3. Preserve the LaTeX TEMPLATE's preamble, document class, packages, and custom commands EXACTLY as written — use the layout macros the template already defines rather than inventing your own. The output must compile with the same toolchain.
 4. Use a clean professional voice consistent with how the candidate writes about their own work in the profile. Don't make every bullet sound corporate. Don't keyword-stuff.
 
 SECTION ORDER — STRICT AND NON-NEGOTIABLE:
-- The résumé's top-level \\\\section blocks MUST appear in EXACTLY this order: Summary, Education, Skills, Experience, Projects.
-- Summary and Education ALWAYS come first, in that order, before any other section. Never reorder them, never push them below Skills/Experience/Projects.
-- Summary and Education are MANDATORY — they must ALWAYS be present, even when the budget is tight. Never omit them. The Summary is always composable from the candidate's profile; never skip it for length (tighten it to one sentence instead).
-- Do NOT add, rename, split, or reorder these sections. Do NOT invent new top-level sections (no "Awards", "Certifications", "Leadership", etc.) — fold any such content into the five canonical sections or omit it.
-- The ONLY permitted deviation is OMITTING one of Skills / Experience / Projects when the candidate genuinely has no content for it. When a section is omitted, the remaining sections KEEP this relative order.
+- A LAYOUT CONTRACT block in the user message states this template's section order, its mandatory sections, and its optional sections. Follow it EXACTLY.
+- Sections must appear in the contract's stated order. Never reorder them.
+- The contract's mandatory sections must ALWAYS be present, even when the budget is tight. Never omit them. A Summary is always composable from the candidate's profile; never skip it for length (tighten it to one sentence instead).
+- Do NOT add, rename, split, or reorder sections. Do NOT invent top-level sections outside the contract's lists — fold any such content into a listed section or omit it.
+- The ONLY permitted deviation is OMITTING an OPTIONAL section when the candidate genuinely has no content for it. When a section is omitted, the rest KEEP their relative order.
 - Reordering for relevance applies ONLY to items/bullets WITHIN a section — never to the section sequence itself.
+- If no LAYOUT CONTRACT block is present, preserve the section order of the supplied template exactly as written.
 
 HOW TO HANDLE THE TEMPLATE:
 - The template defines the layout, custom macros, and section structure. Preserve all of it.
-- The template's inline CONTENT is placeholder material (e.g. "Full Name", "email@example.com", "Project Name", "Tech Stack", "Institution Name", "Bullet describing scope...", "Company or Organization"). It is there to demonstrate how each macro is used.
+- The template's inline CONTENT is placeholder material. It is there to demonstrate how each macro is used. When a LAYOUT CONTRACT block is present it lists the exact placeholder strings.
 - REPLACE every piece of placeholder content with the candidate's actual content drawn from the profile pool, tailored to the JD. None of the placeholder strings may appear in your output.
 - If the template happens to contain real content (e.g. a saved résumé the candidate previously composed), treat it as a strong baseline. Substitute items only when more JD-relevant material exists in the broader profile.
 
@@ -98,4 +103,4 @@ OUTPUT FORMAT:
 - Begin with the opening \\\\documentclass.
 - End with \\\\end{document}.
 - Do NOT wrap the output in code fences. Do NOT include any prose, preamble, or explanation outside the LaTeX.
-- ZERO placeholder strings from the template (e.g. "Full Name", "Project Name", "Tech Stack", "Bullet describing scope...", "Institution Name", "Company or Organization") may appear in the output.`;
+- ZERO placeholder strings from the template may appear in the output. When a LAYOUT CONTRACT block is present it lists them explicitly.`;

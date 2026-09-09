@@ -68,6 +68,12 @@ export type Profile = {
   baseCvLatex?: string;
   additionalSkills?: string;
   parsed?: ParsedProfile;
+  /**
+   * Chosen built-in layout id. Additive and optional, so an existing v2 profile
+   * in localStorage stays valid and no migration is needed — absent simply
+   * means the default layout.
+   */
+  templateId?: string;
   updatedAt?: string;
 };
 

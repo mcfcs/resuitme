@@ -3,6 +3,7 @@ import { completeText, llmErrorResponse } from "@/lib/llm";
 import type { Analysis } from "@/lib/types";
 import type { ParsedProfile } from "@/lib/profile";
 import { getTemplate } from "@/lib/templates";
+import { layoutContractBlock } from "@/lib/prompts/layout-contract";
 import { COMPOSE_TARGET_FRACTION } from "@/lib/latex";
 import type { HonestSignals } from "@/lib/prompts/context";
 import {
@@ -24,6 +25,7 @@ export async function POST(req: NextRequest) {
     const {
       jobDescription,
       template,
+      templateId,
       profileContext,
       analysis,
       honest,
@@ -32,6 +34,7 @@ export async function POST(req: NextRequest) {
     } = (await req.json()) as {
       jobDescription?: string;
       template?: string;
+      templateId?: string;
       profileContext?: {
         parsedProfile?: ParsedProfile;
         baseCvLatex?: string;
@@ -65,7 +68,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const templateLatex = template?.trim() || getTemplate().latex;
+    // A raw template string (the user's own saved résumé LaTeX) takes precedence
+    // over the chosen built-in. Crucially, the LAYOUT CONTRACT is derived ONLY
+    // for a built-in: when the user brings their own LaTeX we do not know its
+    // section order or macros, and asserting Classic's would corrupt the output.
+    const chosen = getTemplate(templateId);
+    const usingOwnLatex = Boolean(template?.trim());
+    const templateLatex = usingOwnLatex ? template!.trim() : chosen.latex;
+    const layoutContract = usingOwnLatex ? "" : layoutContractBlock(chosen);
 
     const mergedHonest = mergeHonestSignals(honest, analysis);
     const mustIncludePicks = filterMustInclude(
@@ -124,7 +134,7 @@ ${cuts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 
 === JOB DESCRIPTION ===
 ${jobDescription}
-${budgetBlock}${cutsBlock}${analysisContext}${honestBlock}${profileBlock}
+${budgetBlock}${cutsBlock}${analysisContext}${honestBlock}${profileBlock}${layoutContract}
 === LATEX TEMPLATE (preserve preamble, packages, custom macros, and section structure; replace all placeholder content with profile material tailored to the JD) ===
 ${templateLatex}
 

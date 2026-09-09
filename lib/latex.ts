@@ -125,7 +125,12 @@ export function computeOnePageBudget(originalLatex: string): {
  * real (non-trivial) document; otherwise compose against a calibrated full-page
  * target.
  */
-export function computeBuildBudget(baseResumeLatex?: string): {
+export function computeBuildBudget(
+  baseResumeLatex?: string,
+  /** This layout's measured full-page capacity. Denser layouts fit more.
+   *  Defaults to the Classic calibration so existing callers are unaffected. */
+  targetChars: number = TARGET_ONE_PAGE_CHARS,
+): {
   budget: number;
   originalChars: number;
   capped: boolean;

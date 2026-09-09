@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Analysis, BudgetInfo } from "@/lib/types";
 import { loadProfile, profileToText, type Profile } from "@/lib/profile";
 import { computeBuildBudget } from "@/lib/latex";
+import { getTemplate, DEFAULT_TEMPLATE_ID } from "@/lib/templates";
 import { checkPageCount, scanAts, type AtsScanResult } from "@/lib/render";
 import { lintLatexForAts, type AtsFinding } from "@/lib/ats/source-lint";
 import { runTrimLoop } from "@/lib/trim-loop";
@@ -57,11 +58,14 @@ export function useBuildPipeline() {
   const [honest, setHonest] = useState<Record<string, HonestVerdict>>({});
   const [honestNotes, setHonestNotes] = useState("");
 
+  const [templateId, setTemplateId] = useState<string>(DEFAULT_TEMPLATE_ID);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setProfile(loadProfile());
+    const p = loadProfile();
+    setProfile(p);
+    if (p?.templateId) setTemplateId(p.templateId);
     setHydrated(true);
   }, []);
 
@@ -121,8 +125,10 @@ export function useBuildPipeline() {
     setBusy("build");
     setPhase("building");
     try {
+      const template = getTemplate(templateId);
       const { budget, originalChars, capped } = computeBuildBudget(
         profile.baseResumeLatex,
+        template.targetChars,
       );
 
       const result = await runTrimLoop(budget, {
@@ -136,6 +142,7 @@ export function useBuildPipeline() {
               // Send only when user has a saved layout — let the backend
               // fall back to the built-in template otherwise.
               template: profile.baseResumeLatex?.trim() || undefined,
+              templateId,
               profileContext: {
                 parsedProfile: profile.parsed,
                 baseCvLatex: profile.baseCvLatex,
@@ -212,7 +219,14 @@ export function useBuildPipeline() {
     } finally {
       setBusy(null);
     }
-  }, [profileFitAnalysis, profile, jobDescription, honest, honestNotes]);
+  }, [
+    profileFitAnalysis,
+    profile,
+    jobDescription,
+    honest,
+    honestNotes,
+    templateId,
+  ]);
 
   const reset = useCallback(() => {
     setPhase("input");
@@ -256,6 +270,8 @@ export function useBuildPipeline() {
     honestNotes,
     setHonestNotes,
     profile,
+    templateId,
+    setTemplateId,
     hydrated,
     hasProfileContent,
     analyzeFit,
