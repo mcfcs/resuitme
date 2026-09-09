@@ -104,15 +104,15 @@ scans the result.
 Every metric is objective; there is no judge model, because a judge model's
 opinion of a résumé is exactly the thing that cannot be verified.
 
-| Metric | Why it matters |
-| --- | --- |
-| ATS score | From the PDF text layer. Catches unextractable output. |
-| Pages | Anything but 1 is a whole-pipeline failure. |
-| `must_include` coverage | Did the analyzer's ranked picks survive into the output? |
-| Honesty violations | Did a disclaimed keyword appear anyway? Any hit is a contract breach. |
-| Placeholder leaks | The prompt promises zero; nothing else checks. |
-| Trims | Proxy for how well `targetChars` is calibrated for the layout. |
-| Chars/Budget | How full the page actually is. A low ratio means content is being left on the table. |
+| Metric                  | Why it matters                                                                       |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| ATS score               | From the PDF text layer. Catches unextractable output.                               |
+| Pages                   | Anything but 1 is a whole-pipeline failure.                                          |
+| `must_include` coverage | Did the analyzer's ranked picks survive into the output?                             |
+| Honesty violations      | Did a disclaimed keyword appear anyway? Any hit is a contract breach.                |
+| Placeholder leaks       | The prompt promises zero; nothing else checks.                                       |
+| Trims                   | Proxy for how well `targetChars` is calibrated for the layout.                       |
+| Chars/Budget            | How full the page actually is. A low ratio means content is being left on the table. |
 
 `must_include` coverage is the headline. The analyzer produces 3–5 specific
 ranked picks, and those are now interpolated into the generation prompt — this
