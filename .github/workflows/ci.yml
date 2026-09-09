@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx next lint
+
+      # Unit tests only. The eval harness (`npm run eval`) is deliberately NOT
+      # run here: it needs a live model host (Ollama or an Anthropic key) and
+      # takes minutes per case. Run it locally when comparing models.
+      - name: Test
+        run: npx vitest run

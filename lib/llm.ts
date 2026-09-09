@@ -155,12 +155,12 @@ export function stripCodeFences(text: string): string {
  * separate `message.thinking` field, but plenty of community GGUFs emit
  * <think>…</think> straight into the content instead.
  */
-function stripThinkBlocks(text: string): string {
+export function stripThinkBlocks(text: string): string {
   return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 }
 
 /** Best-effort JSON extraction — tolerates stray prose around the object. */
-function parseJsonLoose<T>(raw: string): T {
+export function parseJsonLoose<T>(raw: string): T {
   const text = stripCodeFences(stripThinkBlocks(raw));
   try {
     return JSON.parse(text) as T;
