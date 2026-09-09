@@ -9,7 +9,13 @@ import {
   MAX_TRIM_PASSES,
   visibleChars,
 } from "@/lib/latex";
-import { checkPageCount, cutTarget } from "@/lib/render";
+import {
+  checkPageCount,
+  cutTarget,
+  scanAts,
+  type AtsScanResult,
+} from "@/lib/render";
+import { lintLatexForAts, type AtsFinding } from "@/lib/ats/source-lint";
 import SiteNav from "@/components/SiteNav";
 import BackendFooter from "@/components/BackendFooter";
 import { AnalysisCard, ScorePill } from "@/components/Analysis";
@@ -24,7 +30,14 @@ export default function Home() {
 
   const [phase, setPhase] = useState<Phase>("input");
   const [busy, setBusy] = useState<
-    null | "analyze" | "tailor" | "render" | "verify" | "trim" | "reanalyze"
+    | null
+    | "analyze"
+    | "tailor"
+    | "render"
+    | "verify"
+    | "trim"
+    | "ats"
+    | "reanalyze"
   >(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +50,8 @@ export default function Home() {
   );
 
   const [budgetInfo, setBudgetInfo] = useState<BudgetInfo | null>(null);
+  const [ats, setAts] = useState<AtsScanResult | null>(null);
+  const [atsFindings, setAtsFindings] = useState<AtsFinding[]>([]);
 
   // Honesty signals — per missing keyword
   const [honest, setHonest] = useState<Record<string, HonestVerdict>>({});
@@ -88,6 +103,8 @@ export default function Home() {
     if (!originalAnalysis) return;
     setError(null);
     setBudgetInfo(null);
+    setAts(null);
+    setAtsFindings([]);
     setBusy("tailor");
     setPhase("tailoring");
     try {
@@ -209,6 +226,13 @@ export default function Home() {
         fits,
       });
 
+      // ATS pass on the FINAL draft only. The tailor path matters most here:
+      // the LaTeX is the user's own, so it can carry defects the app never
+      // authored and the built-in templates are guaranteed not to have.
+      setAtsFindings(lintLatexForAts(tailored));
+      setBusy("ats");
+      setAts(await scanAts(tailored));
+
       // Auto-reanalyze the (possibly trimmed) tailored version.
       setBusy("reanalyze");
       const res2 = await fetch("/api/analyze", {
@@ -237,6 +261,8 @@ export default function Home() {
     setHonestNotes("");
     setError(null);
     setBudgetInfo(null);
+    setAts(null);
+    setAtsFindings([]);
   }
 
   function setVerdict(keyword: string, v: HonestVerdict) {
@@ -472,6 +498,8 @@ export default function Home() {
             filename="resume-tailored.tex"
             overleafName="Tailored Resume (Resuitme)"
             budgetInfo={budgetInfo}
+            ats={ats}
+            atsFindings={atsFindings}
             accent="marigold"
             hint={
               <>

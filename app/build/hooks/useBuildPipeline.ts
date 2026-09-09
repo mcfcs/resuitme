@@ -11,14 +11,22 @@ import { useCallback, useEffect, useState } from "react";
 import type { Analysis, BudgetInfo } from "@/lib/types";
 import { loadProfile, profileToText, type Profile } from "@/lib/profile";
 import { computeBuildBudget } from "@/lib/latex";
-import { checkPageCount } from "@/lib/render";
+import { checkPageCount, scanAts, type AtsScanResult } from "@/lib/render";
+import { lintLatexForAts, type AtsFinding } from "@/lib/ats/source-lint";
 import { runTrimLoop } from "@/lib/trim-loop";
 import type { HonestVerdict } from "@/components/HonestyPanel";
 
 export type Phase = "input" | "analyzed" | "honesty" | "building" | "built";
 
 export type Busy =
-  null | "analyze" | "build" | "trim" | "render" | "verify" | "reanalyze";
+  | null
+  | "analyze"
+  | "build"
+  | "trim"
+  | "render"
+  | "verify"
+  | "ats"
+  | "reanalyze";
 
 /**
  * What the analyzer sees for a profile input. The CV is the fullest source of
@@ -43,6 +51,8 @@ export function useBuildPipeline() {
   const [builtLatex, setBuiltLatex] = useState<string>("");
   const [builtAnalysis, setBuiltAnalysis] = useState<Analysis | null>(null);
   const [budgetInfo, setBudgetInfo] = useState<BudgetInfo | null>(null);
+  const [ats, setAts] = useState<AtsScanResult | null>(null);
+  const [atsFindings, setAtsFindings] = useState<AtsFinding[]>([]);
 
   const [honest, setHonest] = useState<Record<string, HonestVerdict>>({});
   const [honestNotes, setHonestNotes] = useState("");
@@ -106,6 +116,8 @@ export function useBuildPipeline() {
     if (!profileFitAnalysis || !profile) return;
     setError(null);
     setBudgetInfo(null);
+    setAts(null);
+    setAtsFindings([]);
     setBusy("build");
     setPhase("building");
     try {
@@ -177,6 +189,12 @@ export function useBuildPipeline() {
         fits: result.fits,
       });
 
+      // ATS pass on the FINAL draft only — the trim loop must not pay for
+      // text extraction on every one of its passes.
+      setAtsFindings(lintLatexForAts(result.latex));
+      setBusy("ats");
+      setAts(await scanAts(result.latex));
+
       // Analyze the built résumé against the JD for a final score.
       setBusy("reanalyze");
       const res2 = await fetch("/api/analyze", {
@@ -232,6 +250,8 @@ export function useBuildPipeline() {
     builtLatex,
     builtAnalysis,
     budgetInfo,
+    ats,
+    atsFindings,
     honest,
     honestNotes,
     setHonestNotes,

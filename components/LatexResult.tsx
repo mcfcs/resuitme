@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import type { Accent, BudgetInfo } from "@/lib/types";
+import type { AtsScanResult } from "@/lib/render";
+import type { AtsFinding } from "@/lib/ats/source-lint";
+import AtsReport from "@/components/AtsReport";
 
 /**
  * Result panel: the generated LaTeX plus its export actions and one-page
@@ -15,6 +18,8 @@ export default function LatexResult({
   budgetInfo,
   accent = "marigold",
   hint,
+  ats = null,
+  atsFindings = [],
 }: {
   title: string;
   latex: string;
@@ -23,6 +28,10 @@ export default function LatexResult({
   budgetInfo: BudgetInfo | null;
   accent?: Accent;
   hint: React.ReactNode;
+  /** PDF-extraction scan of this résumé; null when unavailable. */
+  ats?: AtsScanResult | null;
+  /** Static LaTeX lint findings, available without a compile. */
+  atsFindings?: AtsFinding[];
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -127,6 +136,12 @@ export default function LatexResult({
       </pre>
 
       <p className="mt-2.5 text-xs text-paper/40">{hint}</p>
+
+      {(ats || atsFindings.length > 0) && (
+        <div className="mt-5">
+          <AtsReport scan={ats} findings={atsFindings} accent={accent} />
+        </div>
+      )}
 
       {budgetInfo &&
         budgetInfo.iterations > 1 &&

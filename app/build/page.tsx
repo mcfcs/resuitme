@@ -28,6 +28,8 @@ export default function BuildPage() {
     builtLatex,
     builtAnalysis,
     budgetInfo,
+    ats,
+    atsFindings,
     honest,
     honestNotes,
     setHonestNotes,
@@ -205,7 +207,9 @@ export default function BuildPage() {
                   ? "Planning cuts to fit one page…"
                   : busy === "trim"
                     ? "Trimming to fit one page…"
-                    : "Scoring the built résumé…"}
+                    : busy === "ats"
+                      ? "Checking what a résumé parser reads…"
+                      : "Scoring the built résumé…"}
           </div>
           <div className="mt-2 text-xs text-paper/40">
             This runs several model passes — expect 30–60s on a hosted model,
@@ -249,6 +253,8 @@ export default function BuildPage() {
             filename="resume-built.tex"
             overleafName="Built Resume (Resuitme)"
             budgetInfo={budgetInfo}
+            ats={ats}
+            atsFindings={atsFindings}
             accent="sage"
             hint={
               <>
