@@ -144,15 +144,9 @@ function scoreBucket(expected: string[], actual: string[]): BucketScore {
 
 // ------------------------------------------------------------- analysis ----
 
-type Analysis = {
-  score: number;
-  verdict: string;
-  strengths: string[];
-  gaps: string[];
-  suggestions: string[];
-  must_include: Array<{ item: string; reason: string }>;
-  keyword_coverage: Buckets;
-};
+// Import the real type rather than restating it — a local copy silently drifts
+// from the schema the route actually returns.
+import type { Analysis } from "@/lib/types";
 
 /**
  * Only the two keyword buckets that constitute a positive claim, plus the

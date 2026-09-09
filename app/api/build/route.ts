@@ -9,6 +9,7 @@ import type { HonestSignals } from "@/lib/prompts/context";
 import {
   analysisContextBlock,
   filterMustInclude,
+  fitStrategyBlock,
   honestyBlock,
   mergeHonestSignals,
 } from "@/lib/prompts/context";
@@ -81,7 +82,9 @@ export async function POST(req: NextRequest) {
     const mustIncludePicks = filterMustInclude(
       analysis?.must_include,
       mergedHonest.perKeyword,
+      analysis?.fit?.disqualifying ?? [],
     );
+    const fitBlock = fitStrategyBlock(analysis?.fit);
     const analysisContext = analysisContextBlock(analysis, mustIncludePicks);
     const honestBlock = honestyBlock(mergedHonest);
 
@@ -134,7 +137,7 @@ ${cuts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 
 === JOB DESCRIPTION ===
 ${jobDescription}
-${budgetBlock}${cutsBlock}${analysisContext}${honestBlock}${profileBlock}${layoutContract}
+${budgetBlock}${cutsBlock}${analysisContext}${fitBlock}${honestBlock}${profileBlock}${layoutContract}
 === LATEX TEMPLATE (preserve preamble, packages, custom macros, and section structure; replace all placeholder content with profile material tailored to the JD) ===
 ${templateLatex}
 

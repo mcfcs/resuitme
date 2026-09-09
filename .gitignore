@@ -28,3 +28,6 @@ next-env.d.ts
 # eval run artifacts
 gen-baseline.json
 eval-*.json
+
+# harvested third-party job descriptions (scraped content, not source)
+evals/corpus/

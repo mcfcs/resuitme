@@ -18,7 +18,7 @@
 //    to omit the same thing. filterMustInclude() resolves that in favour of
 //    honesty — see its comment.
 
-import type { Analysis, MustIncludePick } from "@/lib/types";
+import type { Analysis, FitVerdict, MustIncludePick } from "@/lib/types";
 
 export type HonestVerdict = "have" | "partial" | "none";
 export type HonestSignals = {
@@ -40,11 +40,17 @@ export type HonestSignals = {
 export function filterMustInclude(
   picks: MustIncludePick[] | undefined,
   perKeyword: Record<string, HonestVerdict>,
+  /** Requirements no rewrite can satisfy. Same contradiction, different source. */
+  disqualifying: string[] = [],
 ): MustIncludePick[] {
   if (!picks?.length) return [];
-  const disclaimed = Object.entries(perKeyword)
-    .filter(([, v]) => v === "none")
-    .map(([k]) => normalizeKeyword(k))
+  const disclaimed = [
+    ...Object.entries(perKeyword)
+      .filter(([, v]) => v === "none")
+      .map(([k]) => k),
+    ...disqualifying,
+  ]
+    .map(normalizeKeyword)
     .filter(Boolean);
   if (!disclaimed.length) return picks;
 
@@ -61,6 +67,47 @@ function normalizeKeyword(s: string): string {
     .replace(/[^a-z0-9+#]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/**
+ * How to pitch the candidate given the viability verdict.
+ *
+ * Only rendered when the fit is NOT direct. On a direct match this block is
+ * noise; on a weak one it is the difference between a résumé that reframes
+ * honestly and one that pretends to a domain fit it does not have.
+ */
+export function fitStrategyBlock(fit: FitVerdict | undefined): string {
+  if (!fit || fit.domain_match === "direct") return "";
+
+  const lines = [
+    "",
+    "=== FIT REALITY (shape the résumé around this) ===",
+    `The candidate's field is ${fit.domain_match.toUpperCase()} to this role.`,
+  ];
+
+  if (fit.transferable.length) {
+    lines.push(
+      "Lead with these, which genuinely carry across the gap:",
+      ...fit.transferable.map((t) => `  - ${t}`),
+    );
+  }
+
+  if (fit.disqualifying.length) {
+    lines.push(
+      "The candidate does NOT meet these, and no wording can change that.",
+      "Never imply otherwise; do not feature them:",
+      ...fit.disqualifying.map((d) => `  - ${d}`),
+    );
+  }
+
+  lines.push(
+    fit.domain_match === "unrelated"
+      ? "Do NOT imitate the vocabulary of a field the candidate has not worked in. Present their real work plainly and let the transferable parts speak."
+      : "Frame existing work in terms the JD's field recognizes, without claiming domain experience the candidate lacks.",
+    "",
+  );
+
+  return lines.join("\n");
 }
 
 /**

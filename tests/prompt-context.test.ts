@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   analysisContextBlock,
   filterMustInclude,
+  fitStrategyBlock,
   honestyBlock,
   mergeHonestSignals,
   type HonestSignals,
@@ -14,6 +15,12 @@ import type { Analysis } from "@/lib/types";
 function analysis(over: Partial<Analysis> = {}): Analysis {
   return {
     score: 72,
+    fit: {
+      domain_match: "direct",
+      seniority_match: "at",
+      transferable: [],
+      disqualifying: [],
+    },
     verdict: "Solid fit.",
     strengths: ["Python depth"],
     gaps: ["No Kubernetes"],
@@ -193,4 +200,86 @@ describe("COMPOSE_TARGET_FRACTION matches the prompts", () => {
       expect(src).toContain(`TARGET ~${pct}% of the budget`);
     });
   }
+});
+
+describe("filterMustInclude — disqualifying requirements", () => {
+  it("drops a pick naming a disqualifying requirement", () => {
+    // Same contradiction as a disclaimed keyword, different source: the model
+    // must not be told to feature something it is also told is unattainable.
+    const picks = [
+      { item: "CPA licensure track", reason: "Accounting depth." },
+      { item: "aCount platform", reason: "Payments work." },
+    ];
+    const out = filterMustInclude(picks, {}, ["CPA licensure"]);
+    expect(out).toHaveLength(1);
+    expect(out[0].item).toBe("aCount platform");
+  });
+
+  it("combines keyword and disqualifying sources", () => {
+    const picks = [
+      { item: "Kubernetes work", reason: "x" },
+      { item: "Nursing rotation", reason: "y" },
+      { item: "aCount platform", reason: "z" },
+    ];
+    const out = filterMustInclude(picks, { kubernetes: "none" }, ["nursing"]);
+    expect(out.map((p) => p.item)).toEqual(["aCount platform"]);
+  });
+
+  it("keeps every pick when nothing is disqualifying", () => {
+    const picks = analysis().must_include;
+    expect(filterMustInclude(picks, {}, [])).toEqual(picks);
+  });
+});
+
+describe("fitStrategyBlock", () => {
+  const base = {
+    domain_match: "unrelated" as const,
+    seniority_match: "below" as const,
+    transferable: ["Led a 5-person team", "Built reconciliation logic"],
+    disqualifying: ["Degree in Psychology or HR"],
+  };
+
+  it("renders nothing for a direct match", () => {
+    expect(fitStrategyBlock({ ...base, domain_match: "direct" })).toBe("");
+  });
+
+  it("renders nothing when there is no verdict at all", () => {
+    expect(fitStrategyBlock(undefined)).toBe("");
+  });
+
+  it("states the domain relationship", () => {
+    expect(fitStrategyBlock(base)).toContain("UNRELATED");
+  });
+
+  it("lists what transfers, so the model leads with it", () => {
+    const out = fitStrategyBlock(base);
+    expect(out).toContain("Led a 5-person team");
+    expect(out).toContain("Built reconciliation logic");
+  });
+
+  it("lists what cannot be met and forbids implying otherwise", () => {
+    const out = fitStrategyBlock(base);
+    expect(out).toContain("Degree in Psychology or HR");
+    expect(out).toMatch(/Never imply otherwise/);
+  });
+
+  it("forbids imitating an unfamiliar field's vocabulary when unrelated", () => {
+    expect(fitStrategyBlock(base)).toMatch(/Do NOT imitate the vocabulary/);
+  });
+
+  it("uses softer framing guidance for an adjacent field", () => {
+    const out = fitStrategyBlock({ ...base, domain_match: "adjacent" });
+    expect(out).not.toMatch(/Do NOT imitate the vocabulary/);
+    expect(out).toMatch(/without claiming domain experience/);
+  });
+
+  it("omits empty sections rather than printing empty headers", () => {
+    const out = fitStrategyBlock({
+      ...base,
+      transferable: [],
+      disqualifying: [],
+    });
+    expect(out).not.toContain("Lead with these");
+    expect(out).not.toContain("does NOT meet");
+  });
 });

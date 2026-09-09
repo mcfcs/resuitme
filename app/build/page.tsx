@@ -12,6 +12,7 @@ import { saveProfile } from "@/lib/profile";
 import SiteNav from "@/components/SiteNav";
 import BackendFooter from "@/components/BackendFooter";
 import { AnalysisCard, ScorePill } from "@/components/Analysis";
+import FitVerdictNotice from "@/components/FitVerdict";
 import HonestyPanel from "@/components/HonestyPanel";
 import LatexResult from "@/components/LatexResult";
 import TemplateCard from "@/components/build/TemplateCard";
@@ -164,6 +165,10 @@ export default function BuildPage() {
             Your profile vs this job
             <ScorePill score={profileFitAnalysis.score} />
           </h2>
+          <div className="mb-6">
+            <FitVerdictNotice fit={profileFitAnalysis.fit} accent="sage" />
+          </div>
+
           <AnalysisCard analysis={profileFitAnalysis} accent="sage" />
 
           {(phase === "analyzed" || phase === "honesty") && (

@@ -19,6 +19,7 @@ import { lintLatexForAts, type AtsFinding } from "@/lib/ats/source-lint";
 import SiteNav from "@/components/SiteNav";
 import BackendFooter from "@/components/BackendFooter";
 import { AnalysisCard, ScorePill } from "@/components/Analysis";
+import FitVerdictNotice from "@/components/FitVerdict";
 import HonestyPanel, { type HonestVerdict } from "@/components/HonestyPanel";
 import LatexResult from "@/components/LatexResult";
 
@@ -400,6 +401,10 @@ export default function Home() {
             Original rating
             <ScorePill score={originalAnalysis.score} />
           </h2>
+          <div className="mb-6">
+            <FitVerdictNotice fit={originalAnalysis.fit} accent="marigold" />
+          </div>
+
           <AnalysisCard analysis={originalAnalysis} accent="marigold" />
 
           {(phase === "analyzed" || phase === "honesty") && (

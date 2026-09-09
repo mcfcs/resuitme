@@ -13,6 +13,11 @@
 //    the app: downstream, `missing` keywords become hard "never mention this"
 //    constraints, so a false negative here suppresses real experience.
 //    (evals: cicd-implicit, leadership-implicit, adjacent-not-equal)
+//  - A structured FIT VERDICT separating viability from presentation:
+//    domain_match / seniority_match / transferable / disqualifying. The score
+//    alone conflates "weak but plausible" with "wrong profession"; this lets
+//    the UI warn honestly and the generator lead with transferable evidence
+//    instead of feigning a domain fit.
 //  - Honesty in suggestions: never propose fabricated duration/quantity
 //    claims ("5+ years", "100+ hours"). (evals: mismatch-senior-devops)
 //  - must_include names SPECIFIC real items from the candidate's input —
@@ -43,6 +48,32 @@ SCORING RUBRIC — calibrate your score with this:
 - 35-54: Missing multiple must-haves.
 - <35: Fundamental mismatch (wrong domain, wrong level, wrong stack).
 A missing JD must-have skill deducts at minimum 10 points from the score.
+
+FIT VERDICT — judge viability BEFORE you judge presentation:
+
+The score alone cannot distinguish "a weak but plausible candidate" from "this
+person is in the wrong profession". Populate the "fit" object to separate them.
+
+- domain_match judges the FIELD, not the polish. A computer science student
+  applying to a software role is "direct". Applying to data analytics or
+  quantitative work is "adjacent" — a different field whose skills genuinely
+  carry over. Applying to human resources, accounting, nursing, or law is
+  "unrelated", however strong the candidate is in their own field.
+- Do NOT soften this out of politeness. Recording an unrelated role as
+  "adjacent" encourages a hopeless application and wastes the candidate's time.
+  Equally, do NOT over-flag: a neighbouring technical field is "adjacent", not
+  "unrelated".
+- transferable must name REAL, SPECIFIC things the candidate has done that
+  still count across the gap — a led team, a built system, a quantified
+  outcome. Never generic traits like "communication" or "attention to detail".
+  Leave it empty when nothing genuinely transfers.
+- disqualifying is for requirements NO rewrite can fix: a professional licence,
+  a specific degree they do not hold, a legally required certification, a hard
+  minimum number of years. A skill they could learn is a gap, not a
+  disqualifier — put that in "gaps". Leave empty when nothing is strictly
+  disqualifying.
+- An "unrelated" domain_match should almost always coincide with a score below
+  35, and a populated "disqualifying" list should pull the score down hard.
 
 Your evaluation must be:
 - Specific. Reference actual content from the input and JD, never vague generalities.
