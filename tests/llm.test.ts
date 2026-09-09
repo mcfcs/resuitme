@@ -16,7 +16,7 @@ describe("stripCodeFences", () => {
   });
 
   it("strips a language-tagged fence", () => {
-    expect(stripCodeFences("```json\n{\"a\":1}\n```")).toBe('{"a":1}');
+    expect(stripCodeFences('```json\n{"a":1}\n```')).toBe('{"a":1}');
   });
 
   it("strips a latex-tagged fence, preserving backslashes", () => {

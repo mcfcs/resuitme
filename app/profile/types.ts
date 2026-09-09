@@ -8,11 +8,7 @@ import type { ParsedProfile, Source } from "@/lib/profile";
 export type DocKind = "resume" | "cv";
 
 export type PolishKind =
-  | "experience"
-  | "project"
-  | "education"
-  | "award"
-  | "publication";
+  "experience" | "project" | "education" | "award" | "publication";
 
 export type Rough = Record<string, string>;
 export type PolishedEntry = Record<string, unknown>;
@@ -36,7 +32,12 @@ export type FieldConfig = {
 
 export const FIELD_CONFIGS: Record<PolishKind, FieldConfig[]> = {
   experience: [
-    { name: "company", label: "Company", placeholder: "Acme Corp", required: true },
+    {
+      name: "company",
+      label: "Company",
+      placeholder: "Acme Corp",
+      required: true,
+    },
     {
       name: "role",
       label: "Role / Title",
@@ -55,7 +56,12 @@ export const FIELD_CONFIGS: Record<PolishKind, FieldConfig[]> = {
     },
   ],
   project: [
-    { name: "name", label: "Project name", placeholder: "Resuitme", required: true },
+    {
+      name: "name",
+      label: "Project name",
+      placeholder: "Resuitme",
+      required: true,
+    },
     {
       name: "tech",
       label: "Tech / tools",
@@ -72,7 +78,12 @@ export const FIELD_CONFIGS: Record<PolishKind, FieldConfig[]> = {
     },
   ],
   education: [
-    { name: "institution", label: "Institution", placeholder: "MIT", required: true },
+    {
+      name: "institution",
+      label: "Institution",
+      placeholder: "MIT",
+      required: true,
+    },
     { name: "degree", label: "Degree", placeholder: "B.S." },
     { name: "field", label: "Field", placeholder: "Computer Science" },
     { name: "dates", label: "Dates", placeholder: "2019 – 2023" },
@@ -86,7 +97,12 @@ export const FIELD_CONFIGS: Record<PolishKind, FieldConfig[]> = {
     },
   ],
   award: [
-    { name: "name", label: "Award name", placeholder: "Best Paper Award", required: true },
+    {
+      name: "name",
+      label: "Award name",
+      placeholder: "Best Paper Award",
+      required: true,
+    },
     { name: "year", label: "Year", placeholder: "2024" },
     {
       name: "description",

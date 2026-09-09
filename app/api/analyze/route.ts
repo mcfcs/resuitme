@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const kind: AnalyzeInputKind = inputKind === "profile" ? "profile" : "resume";
+    const kind: AnalyzeInputKind =
+      inputKind === "profile" ? "profile" : "resume";
     const sectionLabel =
       kind === "profile"
         ? "CANDIDATE PROFILE / CV (full background)"

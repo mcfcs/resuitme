@@ -130,7 +130,9 @@ function scoreBucket(expected: string[], actual: string[]): BucketScore {
   const recall = expected.length ? matched.length / expected.length : 1;
   const precision = actual.length ? matched.length / actual.length : 1;
   const f1 =
-    precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+    precision + recall > 0
+      ? (2 * precision * recall) / (precision + recall)
+      : 0;
 
   return { precision, recall, f1, matched, missed, extra };
 }
@@ -147,22 +149,6 @@ type Analysis = {
   keyword_coverage: Buckets;
 };
 
-/**
- * A violation is the model ASSERTING the candidate has something they don't —
- * not merely naming the term.
- *
- * Only the fields that make a positive claim about the candidate are scanned:
- * `strengths`, `must_include`, `verdict`, and the `present`/`partial` keyword
- * buckets. Deliberately excluded:
- *   - `gaps` and `keyword_coverage.missing` — naming an absent skill there is
- *     exactly the correct behaviour, and is what the honesty step consumes.
- *   - `suggestions` — the prompt permits advice like "if you have any exposure
- *     to Kubernetes, add it", which names the term without claiming it.
- *
- * Scanning gaps/suggestions produced false alarms on runs where the model was
- * in fact perfectly honest, which would have made the harness useless as a
- * regression signal.
- */
 /**
  * Only the two keyword buckets that constitute a positive claim, plus the
  * must_include ITEM (which must name something real from the candidate's own
@@ -293,15 +279,11 @@ function markdownReport(results: CaseResult[], model: string): string {
 
   for (const r of results) {
     if (!r.ok) {
-      lines.push(
-        `| ${r.name} | — | — | — | — | ERROR | ${secs(r.ms)} |`,
-      );
+      lines.push(`| ${r.name} | — | — | — | — | ERROR | ${secs(r.ms)} |`);
       continue;
     }
     const b = r.buckets!;
-    const v = r.violations!.length
-      ? `**${r.violations!.join(", ")}**`
-      : "none";
+    const v = r.violations!.length ? `**${r.violations!.join(", ")}**` : "none";
     lines.push(
       `| ${r.name} | ${r.score} | ${pct(b.present.precision)} / ${pct(b.present.recall)} ` +
         `| ${pct(b.partial.precision)} / ${pct(b.partial.recall)} ` +
@@ -450,7 +432,9 @@ async function main() {
 
   // Non-zero exit on a hard failure (a case that errored, or a honesty
   // violation) so this can gate a manual release check if desired.
-  const hardFail = results.some((r) => !r.ok || (r.violations?.length ?? 0) > 0);
+  const hardFail = results.some(
+    (r) => !r.ok || (r.violations?.length ?? 0) > 0,
+  );
   process.exitCode = hardFail ? 1 : 0;
 }
 

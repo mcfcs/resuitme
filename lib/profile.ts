@@ -119,8 +119,8 @@ export function profileHasAnyInput(p: Profile | null): boolean {
   if (!p) return false;
   return Boolean(
     p.baseResumeLatex?.trim() ||
-      p.baseCvLatex?.trim() ||
-      p.additionalSkills?.trim(),
+    p.baseCvLatex?.trim() ||
+    p.additionalSkills?.trim(),
   );
 }
 
@@ -173,12 +173,7 @@ export function profileToText(p: ParsedProfile): string {
       "Experience:\n" +
         p.experience
           .map((e) => {
-            const header = [
-              e.role,
-              `at ${e.company}`,
-              e.dates,
-              e.location,
-            ]
+            const header = [e.role, `at ${e.company}`, e.dates, e.location]
               .filter(Boolean)
               .join(" — ");
             const bullets = e.bullets.length

@@ -25,7 +25,11 @@ export type TrimDeps = {
    * Ask the verifier for cuts totalling ~`overBy` chars. Return an empty array
    * when it has nothing useful; the loop then stops rather than spinning.
    */
-  requestCuts: (latex: string, chars: number, overBy: number) => Promise<string[]>;
+  requestCuts: (
+    latex: string,
+    chars: number,
+    overBy: number,
+  ) => Promise<string[]>;
   /** Progress callback for the busy indicator. */
   onPhase?: (phase: TrimPhase) => void;
   /** Overridable for tests. */

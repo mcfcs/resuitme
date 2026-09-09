@@ -26,8 +26,7 @@ const VERIFY_SCHEMA = {
     },
     rationale: {
       type: "string",
-      description:
-        "One short sentence explaining your overall cut strategy.",
+      description: "One short sentence explaining your overall cut strategy.",
     },
   },
   required: ["fits", "estimatedReduction", "suggestedCuts", "rationale"],

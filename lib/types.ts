@@ -47,8 +47,7 @@ export const ANALYSIS_SCHEMA = {
     },
     verdict: {
       type: "string",
-      description:
-        "One-sentence verdict on the candidate's fit for this role.",
+      description: "One-sentence verdict on the candidate's fit for this role.",
     },
     strengths: {
       type: "array",

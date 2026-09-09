@@ -48,7 +48,9 @@ export default function PolishedPreview({
 
       {kind === "project" && (
         <div>
-          <div className="font-medium text-paper/90">{String(p.name ?? "")}</div>
+          <div className="font-medium text-paper/90">
+            {String(p.name ?? "")}
+          </div>
           {p.description ? (
             <div className="text-sm text-paper/70 mt-0.5">
               {String(p.description)}
@@ -101,7 +103,9 @@ export default function PolishedPreview({
       {kind === "award" && (
         <div className="text-sm text-paper/85">
           <span className="font-medium">{String(p.name ?? "")}</span>
-          {p.year ? <span className="text-paper/50"> · {String(p.year)}</span> : null}
+          {p.year ? (
+            <span className="text-paper/50"> · {String(p.year)}</span>
+          ) : null}
           {p.description ? (
             <div className="text-paper/70 mt-1">{String(p.description)}</div>
           ) : null}
@@ -111,8 +115,12 @@ export default function PolishedPreview({
       {kind === "publication" && (
         <div className="text-sm text-paper/85">
           <span className="font-medium">{String(p.title ?? "")}</span>
-          {p.venue ? <span className="text-paper/60"> · {String(p.venue)}</span> : null}
-          {p.year ? <span className="text-paper/50"> · {String(p.year)}</span> : null}
+          {p.venue ? (
+            <span className="text-paper/60"> · {String(p.venue)}</span>
+          ) : null}
+          {p.year ? (
+            <span className="text-paper/50"> · {String(p.year)}</span>
+          ) : null}
         </div>
       )}
     </div>

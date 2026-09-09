@@ -18,9 +18,23 @@ const TABS: Tab[] = [
     accent: "text-marigold",
     icon: (
       // Document with a pen
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
-        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L14 13l-4 1 1-4Z" strokeLinecap="round" strokeLinejoin="round" />
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        aria-hidden
+      >
+        <path
+          d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M18.5 2.5a2.12 2.12 0 0 1 3 3L14 13l-4 1 1-4Z"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     ),
   },
@@ -30,7 +44,13 @@ const TABS: Tab[] = [
     accent: "text-sage-300",
     icon: (
       // Stacked blocks
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        aria-hidden
+      >
         <rect x="4" y="4" width="7" height="7" rx="1.5" />
         <rect x="13" y="4" width="7" height="7" rx="1.5" />
         <rect x="4" y="13" width="7" height="7" rx="1.5" />
@@ -43,7 +63,13 @@ const TABS: Tab[] = [
     label: "Profile",
     accent: "text-marigold",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        aria-hidden
+      >
         <circle cx="12" cy="8" r="3.5" />
         <path d="M4.5 20a7.5 7.5 0 0 1 15 0" strokeLinecap="round" />
       </svg>

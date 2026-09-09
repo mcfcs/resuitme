@@ -5,7 +5,11 @@
 import type { ParsedProfile } from "@/lib/profile";
 import { SourceBadges } from "@/components/profile/SourceBadge";
 
-export default function ParsedProfileView({ parsed }: { parsed: ParsedProfile }) {
+export default function ParsedProfileView({
+  parsed,
+}: {
+  parsed: ParsedProfile;
+}) {
   return (
     <div className="space-y-7 rounded-md border border-paper/10 bg-ink-raised/40 p-4 sm:p-6">
       <div>

@@ -6,6 +6,7 @@
 // app/profile/hooks/, and every presentational chunk lives in
 // components/profile/.
 
+import { useRef } from "react";
 import SiteNav from "@/components/SiteNav";
 import DocumentBlock from "@/components/profile/DocumentBlock";
 import AddToCvPanel from "@/components/profile/AddToCvPanel";
@@ -28,9 +29,14 @@ export default function ProfilePage() {
     build,
     saveInputsOnly,
     reset,
+    exportProfile,
+    importProfile,
     hasAnyInput,
     builtSources,
   } = useProfileStorage();
+
+  // Hidden <input type=file> driven by the Import button.
+  const importRef = useRef<HTMLInputElement>(null);
 
   const adder = useCvAdder({ profile, setProfile });
 
@@ -52,6 +58,30 @@ export default function ProfilePage() {
                 Last saved {new Date(profile.updatedAt).toLocaleString()}
               </span>
             )}
+            <button
+              onClick={exportProfile}
+              disabled={!hasAnyInput && !profile.parsed}
+              className="shrink-0 text-xs text-paper/50 transition hover:text-marigold disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Export profile
+            </button>
+            <button
+              onClick={() => importRef.current?.click()}
+              className="shrink-0 text-xs text-paper/50 transition hover:text-marigold"
+            >
+              Import
+            </button>
+            <input
+              ref={importRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => {
+                void importProfile(e.target.files?.[0] ?? null);
+                // Reset so re-picking the same file fires change again.
+                e.target.value = "";
+              }}
+            />
             <button
               onClick={reset}
               className="shrink-0 text-xs text-paper/50 transition hover:text-red-300"

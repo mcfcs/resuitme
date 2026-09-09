@@ -6,11 +6,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export type PolishKind =
-  | "experience"
-  | "project"
-  | "education"
-  | "award"
-  | "publication";
+  "experience" | "project" | "education" | "award" | "publication";
 
 const POLISHED_SHAPES = {
   experience: {
@@ -67,7 +63,14 @@ const POLISHED_SHAPES = {
           "1-4 detail lines (GPA, honors, coursework, thesis, etc.). Empty array if user provided no details.",
       },
     },
-    required: ["institution", "degree", "field", "dates", "location", "details"],
+    required: [
+      "institution",
+      "degree",
+      "field",
+      "dates",
+      "location",
+      "details",
+    ],
     additionalProperties: false,
   },
   award: {

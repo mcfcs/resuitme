@@ -16,6 +16,12 @@ import {
   type Profile,
   type Source,
 } from "@/lib/profile";
+import {
+  downloadJson,
+  exportFilename,
+  parseImport,
+  serializeExport,
+} from "@/lib/profile-io";
 import type { DocKind } from "@/app/profile/types";
 
 /** How long the "Saved to this browser" confirmation stays up. */
@@ -112,6 +118,50 @@ export function useProfileStorage() {
     setProfile({});
   }, []);
 
+  /** Download the whole profile as JSON — the only backup that survives a
+   *  cleared browser, since everything otherwise lives in localStorage. */
+  const exportProfile = useCallback(() => {
+    downloadJson(exportFilename(), serializeExport(profile));
+  }, [profile]);
+
+  /**
+   * Restore from an exported file. Overwriting the current profile is
+   * destructive, so it is confirmed first whenever there is anything to lose.
+   */
+  const importProfile = useCallback(
+    async (file: File | null) => {
+      if (!file) return;
+      setError(null);
+      try {
+        const text = await file.text();
+        const imported = parseImport(text);
+
+        const hasExisting =
+          !!profile.baseResumeLatex?.trim() ||
+          !!profile.baseCvLatex?.trim() ||
+          !!profile.additionalSkills?.trim() ||
+          !!profile.parsed;
+        if (
+          hasExisting &&
+          !confirm(
+            "Importing replaces your current profile. Export it first if you want a backup. Continue?",
+          )
+        ) {
+          return;
+        }
+
+        setProfile(imported);
+        saveProfile(imported);
+        flashSaved();
+      } catch (e) {
+        setError(
+          e instanceof Error ? e.message : "Could not import that file.",
+        );
+      }
+    },
+    [profile, flashSaved],
+  );
+
   const hasAnyInput =
     !!profile.baseResumeLatex?.trim() ||
     !!profile.baseCvLatex?.trim() ||
@@ -136,6 +186,8 @@ export function useProfileStorage() {
     build,
     saveInputsOnly,
     reset,
+    exportProfile,
+    importProfile,
     hasAnyInput,
     builtSources,
   };

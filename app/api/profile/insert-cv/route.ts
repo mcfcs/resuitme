@@ -6,11 +6,7 @@ export const runtime = "nodejs";
 export const maxDuration = 180;
 
 export type InsertSection =
-  | "experience"
-  | "project"
-  | "education"
-  | "award"
-  | "publication";
+  "experience" | "project" | "education" | "award" | "publication";
 
 export async function POST(req: NextRequest) {
   try {

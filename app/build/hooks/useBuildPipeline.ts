@@ -18,13 +18,7 @@ import type { HonestVerdict } from "@/components/HonestyPanel";
 export type Phase = "input" | "analyzed" | "honesty" | "building" | "built";
 
 export type Busy =
-  | null
-  | "analyze"
-  | "build"
-  | "trim"
-  | "render"
-  | "verify"
-  | "reanalyze";
+  null | "analyze" | "build" | "trim" | "render" | "verify" | "reanalyze";
 
 /**
  * What the analyzer sees for a profile input. The CV is the fullest source of

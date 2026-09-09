@@ -394,7 +394,8 @@ export function llmErrorResponse(err: unknown): {
   error: string;
   status: number;
 } {
-  if (err instanceof LlmError) return { error: err.message, status: err.status };
+  if (err instanceof LlmError)
+    return { error: err.message, status: err.status };
   const message = err instanceof Error ? err.message : "Unknown error";
   return { error: message, status: 500 };
 }

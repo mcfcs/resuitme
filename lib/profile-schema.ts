@@ -8,7 +8,10 @@ const SOURCES = {
 export const PROFILE_SCHEMA = {
   type: "object",
   properties: {
-    name: { type: "string", description: "Full name as it appears at the top." },
+    name: {
+      type: "string",
+      description: "Full name as it appears at the top.",
+    },
     contact: {
       type: "object",
       properties: {
@@ -77,7 +80,14 @@ export const PROFILE_SCHEMA = {
           },
           sources: SOURCES,
         },
-        required: ["company", "role", "dates", "location", "bullets", "sources"],
+        required: [
+          "company",
+          "role",
+          "dates",
+          "location",
+          "bullets",
+          "sources",
+        ],
         additionalProperties: false,
       },
     },
@@ -111,7 +121,10 @@ export const PROFILE_SCHEMA = {
           items: {
             type: "object",
             properties: {
-              name: { type: "string", description: "e.g. 'Languages', 'Tools'." },
+              name: {
+                type: "string",
+                description: "e.g. 'Languages', 'Tools'.",
+              },
               items: { type: "array", items: { type: "string" } },
             },
             required: ["name", "items"],
