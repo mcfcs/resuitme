@@ -1,275 +1,49 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import type { Analysis, BudgetInfo } from "@/lib/types";
-import { loadProfile, profileToText, type Profile } from "@/lib/profile";
-import {
-  computeBuildBudget,
-  isWithinBudget,
-  MAX_TRIM_PASSES,
-  visibleChars,
-} from "@/lib/latex";
-import { checkPageCount, cutTarget } from "@/lib/render";
+// Build mode — compose a résumé from scratch out of the saved profile and CV,
+// targeted at one job description.
+//
+// Composition only: the pipeline (analyze → honesty → build → fit → re-analyze)
+// lives in app/build/hooks/useBuildPipeline.ts, and the one-page fitting loop
+// inside it is lib/trim-loop.ts.
+
 import { getTemplate } from "@/lib/templates";
 import SiteNav from "@/components/SiteNav";
 import BackendFooter from "@/components/BackendFooter";
 import { AnalysisCard, ScorePill } from "@/components/Analysis";
-import HonestyPanel, { type HonestVerdict } from "@/components/HonestyPanel";
+import HonestyPanel from "@/components/HonestyPanel";
 import LatexResult from "@/components/LatexResult";
-
-type Phase = "input" | "analyzed" | "honesty" | "building" | "built";
-
-function getProfileAsResumeText(p: Profile): string {
-  if (p.baseCvLatex?.trim()) return p.baseCvLatex;
-  if (p.parsed) return profileToText(p.parsed);
-  if (p.additionalSkills?.trim()) return p.additionalSkills;
-  return "";
-}
+import TemplateCard from "@/components/build/TemplateCard";
+import { useBuildPipeline } from "@/app/build/hooks/useBuildPipeline";
 
 export default function BuildPage() {
-  const [jobDescription, setJobDescription] = useState("");
+  const {
+    jobDescription,
+    setJobDescription,
+    phase,
+    setPhase,
+    busy,
+    error,
+    profileFitAnalysis,
+    builtLatex,
+    builtAnalysis,
+    budgetInfo,
+    honest,
+    honestNotes,
+    setHonestNotes,
+    profile,
+    hydrated,
+    hasProfileContent,
+    analyzeFit,
+    build,
+    reset,
+    setVerdict,
+    setAllVerdicts,
+    canAnalyze,
+  } = useBuildPipeline();
 
-  const [phase, setPhase] = useState<Phase>("input");
-  const [busy, setBusy] = useState<
-    null | "analyze" | "build" | "render" | "verify" | "trim" | "reanalyze"
-  >(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const [profileFitAnalysis, setProfileFitAnalysis] = useState<Analysis | null>(
-    null,
-  );
-  const [builtLatex, setBuiltLatex] = useState<string>("");
-  const [builtAnalysis, setBuiltAnalysis] = useState<Analysis | null>(null);
-
-  const [budgetInfo, setBudgetInfo] = useState<BudgetInfo | null>(null);
-
-  const [honest, setHonest] = useState<Record<string, HonestVerdict>>({});
-  const [honestNotes, setHonestNotes] = useState("");
-
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => {
-    setProfile(loadProfile());
-    setHydrated(true);
-  }, []);
-
-  const hasProfileContent = !!(
-    profile?.parsed ||
-    profile?.baseCvLatex?.trim() ||
-    profile?.additionalSkills?.trim()
-  );
   const usingBuiltinTemplate = !profile?.baseResumeLatex?.trim();
   const template = getTemplate();
-
-  async function analyzeFit() {
-    if (!profile || !hasProfileContent) return;
-    setError(null);
-    setBusy("analyze");
-    try {
-      const resumeText = getProfileAsResumeText(profile);
-      if (!resumeText.trim()) {
-        throw new Error("Your profile has no content to analyze.");
-      }
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          resume: resumeText,
-          jobDescription,
-          inputKind: "profile",
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Analysis failed");
-      setProfileFitAnalysis(data.analysis);
-      setBuiltAnalysis(null);
-      setBuiltLatex("");
-
-      const initial: Record<string, HonestVerdict> = {};
-      for (const k of data.analysis.keyword_coverage.missing as string[]) {
-        initial[k] = "partial";
-      }
-      setHonest(initial);
-      setHonestNotes("");
-
-      setPhase("analyzed");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function build() {
-    if (!profileFitAnalysis || !profile) return;
-    setError(null);
-    setBudgetInfo(null);
-    setBusy("build");
-    setPhase("building");
-    try {
-      const { budget, originalChars, capped } = computeBuildBudget(
-        profile.baseResumeLatex,
-      );
-
-      const callBuild = (cuts?: string[]) =>
-        fetch("/api/build", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            jobDescription,
-            // Send only when user has a saved layout — let the backend
-            // fall back to the built-in template otherwise.
-            template: profile.baseResumeLatex?.trim() || undefined,
-            profileContext: {
-              parsedProfile: profile.parsed,
-              baseCvLatex: profile.baseCvLatex,
-              additionalSkills: profile.additionalSkills,
-            },
-            analysis: profileFitAnalysis,
-            honest: {
-              perKeyword: honest,
-              notes: honestNotes.trim() || undefined,
-            },
-            budget,
-            cuts,
-          }),
-        });
-
-      // Multi-pass build + render/verify/trim loop. The REAL page count from a
-      // compile is authoritative for "fits one page"; the visible-char budget
-      // is only a fallback (when rendering is unavailable) and a cut-sizing aid.
-      let built = "";
-      let chars = 0;
-      let iterations = 0;
-      let allCutsApplied: string[] = [];
-      let currentCuts: string[] | undefined = undefined;
-      let pages: number | null = null;
-      let fits = false;
-
-      while (iterations < MAX_TRIM_PASSES) {
-        setBusy(iterations === 0 ? "build" : "trim");
-        const res = await callBuild(currentCuts);
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(
-            data.error ??
-              (iterations === 0 ? "Build failed" : "Trim pass failed"),
-          );
-        }
-        built = data.latex as string;
-        chars = visibleChars(built);
-        iterations += 1;
-
-        // Authoritative check: compile and count real pages.
-        setBusy("render");
-        const check = await checkPageCount(built);
-        pages = check.pages;
-
-        if (check.measured && pages !== null) {
-          // Ground truth. One page (or zero, degenerate) → done.
-          if (pages <= 1) {
-            fits = true;
-            break;
-          }
-          // Genuinely over one page — fall through to request cuts.
-        } else {
-          // Couldn't render/compile — fall back to the char-budget heuristic.
-          if (chars <= budget) {
-            fits = true;
-            break;
-          }
-          if (isWithinBudget(chars, budget, 0.005)) {
-            fits = true;
-            break;
-          }
-        }
-
-        // Out of passes — surface what we have.
-        if (iterations >= MAX_TRIM_PASSES) break;
-
-        // Ask the verifier for fresh cuts against THIS latest LaTeX. Size the
-        // target from the real overflow when the heuristic underestimated.
-        const overBy = cutTarget(pages, chars - budget, budget);
-        setBusy("verify");
-        const verifyRes = await fetch("/api/tailor/verify", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            latex: built,
-            jobDescription,
-            budget,
-            currentChars: chars,
-            overBy,
-          }),
-        });
-        const verifyData = await verifyRes.json();
-        if (
-          !verifyRes.ok ||
-          !Array.isArray(verifyData.suggestedCuts) ||
-          verifyData.suggestedCuts.length === 0
-        ) {
-          // Verifier had nothing useful — surface as-is.
-          break;
-        }
-        currentCuts = verifyData.suggestedCuts as string[];
-        allCutsApplied = [...allCutsApplied, ...currentCuts];
-      }
-
-      setBuiltLatex(built);
-      setBudgetInfo({
-        budget,
-        originalChars,
-        resultChars: chars,
-        capped,
-        iterations,
-        cutsApplied: allCutsApplied,
-        pages,
-        fits,
-      });
-
-      // Analyze the built résumé against the JD for a final score.
-      setBusy("reanalyze");
-      const res2 = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ resume: built, jobDescription }),
-      });
-      const data2 = await res2.json();
-      if (!res2.ok) throw new Error(data2.error ?? "Re-analysis failed");
-      setBuiltAnalysis(data2.analysis);
-      setPhase("built");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setPhase("honesty");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  function reset() {
-    setPhase("input");
-    setProfileFitAnalysis(null);
-    setBuiltAnalysis(null);
-    setBuiltLatex("");
-    setHonest({});
-    setHonestNotes("");
-    setError(null);
-    setBudgetInfo(null);
-  }
-
-  function setVerdict(keyword: string, v: HonestVerdict) {
-    setHonest((prev) => ({ ...prev, [keyword]: v }));
-  }
-  function setAllVerdicts(v: HonestVerdict) {
-    setHonest((prev) => {
-      const next: Record<string, HonestVerdict> = {};
-      for (const k of Object.keys(prev)) next[k] = v;
-      return next;
-    });
-  }
-
-  const canAnalyze = hasProfileContent && jobDescription.trim().length > 20;
 
   return (
     <main className="mx-auto min-h-screen max-w-6xl px-4 py-6 px-safe pb-tabbar sm:px-6 md:py-12">
@@ -488,115 +262,5 @@ export default function BuildPage() {
 
       <BackendFooter label="Resuitme — build mode" />
     </main>
-  );
-}
-
-function TemplateCard({
-  profile,
-  usingBuiltin,
-  hasProfileContent,
-  templateName,
-  templateDescription,
-}: {
-  profile: Profile | null;
-  usingBuiltin: boolean;
-  hasProfileContent: boolean;
-  templateName: string;
-  templateDescription: string;
-}) {
-  const hasParsed = !!profile?.parsed;
-  const hasCv = !!profile?.baseCvLatex?.trim();
-  const hasNotes = !!profile?.additionalSkills?.trim();
-  const counts = hasParsed
-    ? {
-        exp: profile!.parsed!.experience.length,
-        proj: profile!.parsed!.projects.length,
-        skills: profile!.parsed!.skills.flat.length,
-      }
-    : null;
-
-  if (!hasProfileContent) {
-    return (
-      <div className="flex flex-wrap items-start justify-between gap-4 rounded-md border border-orange-500/30 bg-orange-500/[0.04] p-4 sm:p-5">
-        <div className="min-w-0 flex-1">
-          <div className="eyebrow mb-1.5 text-orange-300">
-            00 — No content pool
-          </div>
-          <div className="font-display text-base text-orange-100">
-            Build a profile to use Build mode.
-          </div>
-          <div className="mt-1.5 max-w-prose text-xs leading-relaxed text-paper/55">
-            Build mode composes a résumé entirely from your profile — parsed
-            entries, CV, and skill notes. Add anything to your profile to unlock
-            this mode.
-          </div>
-        </div>
-        <Link
-          href="/profile"
-          className="shrink-0 border-b border-orange-300/30 pb-0.5 text-xs text-orange-200 hover:border-orange-200 hover:text-orange-100"
-        >
-          Set up profile →
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-wrap items-start justify-between gap-4 rounded-md border border-sage-500/25 bg-sage-500/[0.04] p-4 sm:p-5">
-      <div className="min-w-0 flex-1">
-        <div className="eyebrow mb-1.5 text-sage-400">
-          00 — Template &amp; content pool
-        </div>
-        <div className="font-display text-base text-paper/90">
-          {usingBuiltin ? (
-            <>
-              Using the built-in <span className="italic">{templateName}</span>{" "}
-              template.
-            </>
-          ) : (
-            <>Using your saved base résumé as the LaTeX template.</>
-          )}
-        </div>
-        <div className="mt-1.5 max-w-prose text-xs leading-relaxed text-paper/55">
-          {usingBuiltin ? (
-            <>
-              {templateDescription}{" "}
-              <Link
-                href="/profile"
-                className="text-sage-300 underline underline-offset-2 hover:text-sage-200"
-              >
-                Save your own résumé LaTeX
-              </Link>{" "}
-              in your profile to use your layout instead.{" "}
-            </>
-          ) : (
-            <>Preamble, packages, and macros preserved. </>
-          )}
-          {hasParsed ? (
-            <>
-              Content pool —{" "}
-              <span className="tabular-nums text-paper/80">{counts!.exp}</span>{" "}
-              experiences,{" "}
-              <span className="tabular-nums text-paper/80">{counts!.proj}</span>{" "}
-              projects,{" "}
-              <span className="tabular-nums text-paper/80">
-                {counts!.skills}
-              </span>{" "}
-              skills available.
-            </>
-          ) : hasCv ? (
-            <>Content pool: your base CV LaTeX.</>
-          ) : hasNotes ? (
-            <>Content pool: your skills notes.</>
-          ) : null}
-        </div>
-      </div>
-      <Link
-        href="/profile"
-        className="shrink-0 border-b border-sage-500/30 pb-0.5 text-xs text-sage-300 hover:border-sage-400 hover:text-sage-200"
-      >
-        Edit profile →
-      </Link>
-    </div>
   );
 }
