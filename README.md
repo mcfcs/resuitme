@@ -133,13 +133,63 @@ Note that `navigator.clipboard` is unavailable on plain-HTTP origins in some mob
 2. **Analyze résumé** — the model scores fit (0–100) and reports strengths, gaps, missing keywords, and suggested edits.
 3. **The honesty check** — for every keyword the JD wants but your résumé lacks, mark _I have this_ / _Partial_ / _I don't_. Anything marked "I don't" is a hard constraint: it will never appear in the output, even implicitly.
 4. **Tailor** — the model rewrites the LaTeX in place (preserving your preamble and packages), the draft is compiled to count its real page count, and over-long drafts go through a verify-and-trim loop until they fit one page.
-5. Copy the LaTeX, download `.tex`, or open it straight in Overleaf for a PDF preview.
+5. **The ATS check** — the finished PDF is scanned and scored on what a résumé parser actually extracts from it (see below).
+6. Copy the LaTeX, download `.tex`, or open it straight in Overleaf for a PDF preview.
 
-**Build mode** (`/build`) — compose a résumé from scratch out of your saved profile and CV, targeted at one job.
+**Build mode** (`/build`) — compose a résumé from scratch out of your saved profile and CV, targeted at one job. Pick a layout (below); the analyzer's ranked "must include" picks are fed to the composer as hard priorities.
 
 **Profile** (`/profile`) — your source of truth. Paste a base résumé, a longer CV, and free-form skill notes; they get merged into one deduplicated profile. You can also describe a new experience and have it polished into CV-quality prose and inserted into your CV LaTeX, matching the file's existing macros.
 
 Expect a full tailor run to take a few minutes on a local model: it is several sequential model passes, not one.
+
+## The ATS check
+
+Most advice about LaTeX and ATS is folklore. This app measures instead: it
+extracts the text layer from the compiled PDF — the exact thing a parser reads —
+and scores it as a transparent, itemised deduction. You can expand **"the text a
+parser extracts"** to read the output verbatim.
+
+| Check                         | Weight | What it catches                               |
+| ----------------------------- | ------ | --------------------------------------------- |
+| Text is extractable           | 30     | Image-only or outlined-font PDFs              |
+| Characters survive extraction | 25     | Glyphs that decode to control codes           |
+| Single-column flow            | 20     | Multi-column layouts a parser interleaves     |
+| Reading order is preserved    | 10     | Rows whose stream order is scrambled          |
+| Recognizable section headings | 10     | Headings a parser can map to fields           |
+| Contact details are parseable | 5      | Whether your email survives as matchable text |
+
+A second, instant check lints the LaTeX source with no compile at all, flagging
+`multicol`, missing `glyphtounicode`, icon fonts, images, and characters known
+to decode badly.
+
+Two findings from building this, both measured rather than assumed:
+
+- **The widely repeated ligature warning did not apply here.** `glyphtounicode`
+  plus `\pdfgentounicode=1` already make "financial" and "Flask" extract
+  correctly. Several "fixes" for it would have been pure churn.
+- **A peso sign was the one real defect.** `₱53M` extracted as a control
+  character, silently destroying a quantified achievement — invisible on the
+  page, invisible in the LaTeX, and only visible in the extracted text.
+
+Beware `pdftotext` as a checking tool: it reported every bullet in this résumé
+as a replacement character, which was its own font-mapping artifact, not a
+defect in the PDF.
+
+## Layouts
+
+All layouts are **single-column on purpose**. Two-column designs (AltaCV, Deedy
+and similar) look sharper but interleave a sidebar into your work history when a
+parser linearizes the page, so they are deliberately not offered.
+
+| Layout       | Best for                                                                                         | One-page capacity |
+| ------------ | ------------------------------------------------------------------------------------------------ | ----------------- |
+| **Classic**  | Default. Standard sections, 11pt.                                                                | ~3,900 chars      |
+| **Compact**  | More experience than fits. 10pt, tighter leading.                                                | ~4,400 chars      |
+| **Academic** | Research and graduate applications. Education-first, with real Publications and Awards sections. | ~3,900 chars      |
+
+Compact is measured, not estimated: rendering identical content, its body
+occupies 615pt of vertical space where Classic needs 700pt — about 12% more
+content on the same page, without cutting anything.
 
 ## Privacy
 
