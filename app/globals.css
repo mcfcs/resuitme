@@ -43,11 +43,7 @@ body {
       rgba(206, 110, 86, 0.06),
       transparent 50%
     ),
-    linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.015) 1px,
-      transparent 1px
-    );
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
   background-size:
     auto,
     auto,

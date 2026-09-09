@@ -5,9 +5,7 @@
   "resumeFile": "sampleresume.tex",
   "expected": {
     "present": [],
-    "partial": [
-      "google cloud"
-    ],
+    "partial": ["google cloud"],
     "missing": [
       "kubernetes",
       "terraform",

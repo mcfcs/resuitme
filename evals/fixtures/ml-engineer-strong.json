@@ -14,15 +14,7 @@
       "apache spark"
     ],
     "partial": [],
-    "missing": [
-      "kubernetes",
-      "go",
-      "tensorflow"
-    ]
+    "missing": ["kubernetes", "go", "tensorflow"]
   },
-  "mustNotAppear": [
-    "kubernetes",
-    "tensorflow",
-    "golang"
-  ]
+  "mustNotAppear": ["kubernetes", "tensorflow", "golang"]
 }

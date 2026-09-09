@@ -2,6 +2,8 @@
 
 Paste your LaTeX resume and a job description. Get a rating, a tailored rewrite, and a download-ready `.tex` file.
 
+> **Default backend: a self-hosted Ollama model (`gpt-oss:20b`).** Nothing is sent to a hosted model API unless you explicitly set `LLM_PROVIDER=anthropic`. There is no per-token cost and your résumé stays on your network. The Anthropic API is a supported drop-in alternative, not the default.
+
 Runs on a **self-hosted Ollama** model by default, so there is no per-token API cost and your résumé never leaves your network. The Anthropic API remains available as a drop-in alternative.
 
 ## Setup
@@ -60,10 +62,10 @@ The practical rule: **stay under ~19.5 GB total, and treat anything above that a
 
 Two models were measured end-to-end on this app's actual routes:
 
-| Model                             | @32k ctx | raw speed | `/api/analyze` | `/api/tailor` |
-| --------------------------------- | -------- | --------- | -------------- | ------------- |
-| **`gpt-oss:20b`** (MXFP4)         | 12.0 GB  | 146 tok/s | **9.4s**       | **3.8s**      |
-| Qwen3-Coder-30B-A3B (Q4_K_XL)     | 19.4 GB  | 195 tok/s | 15.5s          | 2.9s          |
+| Model                         | @32k ctx | raw speed | `/api/analyze` | `/api/tailor` |
+| ----------------------------- | -------- | --------- | -------------- | ------------- |
+| **`gpt-oss:20b`** (MXFP4)     | 12.0 GB  | 146 tok/s | **9.4s**       | **3.8s**      |
+| Qwen3-Coder-30B-A3B (Q4_K_XL) | 19.4 GB  | 195 tok/s | 15.5s          | 2.9s          |
 
 **`gpt-oss:20b` is the recommended default.** Despite the lower raw token rate it is faster on the analysis route, uses 7 GB less VRAM (leaving real headroom below the cliff), and was more accurate on the judgment that matters most here: given a résumé whose bullets mention a GitHub Actions CI pipeline, it correctly placed CI/CD in `present`, while the 30B put it in `missing`. That distinction is not cosmetic — the app converts analyzer-flagged missing keywords into hard "never mention this" constraints, so a false negative actively suppresses real experience from your tailored résumé.
 
@@ -78,7 +80,7 @@ OLLAMA_KV_CACHE_TYPE=q8_0
 
 ### Reasoning effort matters more than model size
 
-`gpt-oss` is a reasoning model: it emits thinking tokens *before* any answer, and `num_predict` caps thinking and answer **combined**. Setting `OLLAMA_THINK=low` was the single biggest speedup measured:
+`gpt-oss` is a reasoning model: it emits thinking tokens _before_ any answer, and `num_predict` caps thinking and answer **combined**. Setting `OLLAMA_THINK=low` was the single biggest speedup measured:
 
 | `OLLAMA_THINK` | `/api/analyze` | `/api/tailor` |
 | -------------- | -------------- | ------------- |
@@ -109,8 +111,8 @@ Everything else is identical; `lib/llm.ts` normalizes the two providers, includi
 
 The app is a PWA and installs to the iOS or Android home screen:
 
-- **iOS (Safari):** Share → *Add to Home Screen*. Launches fullscreen with no browser chrome, using the marigold-on-ink app icon.
-- **Android (Chrome):** menu → *Install app* / *Add to Home screen*.
+- **iOS (Safari):** Share → _Add to Home Screen_. Launches fullscreen with no browser chrome, using the marigold-on-ink app icon.
+- **Android (Chrome):** menu → _Install app_ / _Add to Home screen_.
 
 To use it from your phone against a dev server on your computer, bind the dev server to your LAN:
 
@@ -118,6 +120,8 @@ To use it from your phone against a dev server on your computer, bind the dev se
 npm run dev -- -H 0.0.0.0
 # then visit http://<your-computer-ip>:3000 from the phone
 ```
+
+> **This exposes the API to your whole network.** `/api/render` becomes an open proxy to a third-party LaTeX compiler (and forwards résumé text to it), and `/api/analyze` becomes an open proxy to your GPU. Set `APP_ACCESS_TOKEN` in `.env.local` before doing this — every `/api/*` request then needs an `x-app-token` (or `Authorization: Bearer`) header, and the check is a no-op when the variable is unset. A per-IP rate limit on `/api/analyze` (30/min) and `/api/render` (60/min) is always on. See `.env.local.example`. This is a deterrent sized to a home LAN, not authentication — anything genuinely public belongs behind a reverse proxy with TLS.
 
 Note that `navigator.clipboard` is unavailable on plain-HTTP origins in some mobile browsers; the Copy button falls back to a legacy copy path so it still works over LAN.
 
@@ -127,7 +131,7 @@ Note that `navigator.clipboard` is unavailable on plain-HTTP origins in some mob
 
 1. Paste your LaTeX résumé and the target job description.
 2. **Analyze résumé** — the model scores fit (0–100) and reports strengths, gaps, missing keywords, and suggested edits.
-3. **The honesty check** — for every keyword the JD wants but your résumé lacks, mark *I have this* / *Partial* / *I don't*. Anything marked "I don't" is a hard constraint: it will never appear in the output, even implicitly.
+3. **The honesty check** — for every keyword the JD wants but your résumé lacks, mark _I have this_ / _Partial_ / _I don't_. Anything marked "I don't" is a hard constraint: it will never appear in the output, even implicitly.
 4. **Tailor** — the model rewrites the LaTeX in place (preserving your preamble and packages), the draft is compiled to count its real page count, and over-long drafts go through a verify-and-trim loop until they fit one page.
 5. Copy the LaTeX, download `.tex`, or open it straight in Overleaf for a PDF preview.
 
@@ -141,6 +145,8 @@ Expect a full tailor run to take a few minutes on a local model: it is several s
 
 Résumé and JD text goes to whichever backend you configured — a local Ollama host keeps it on your network; the Anthropic backend does not. Either way, nothing is stored server-side, and profile data lives only in your browser's `localStorage`.
 
+Because `localStorage` is the only copy, **use "Export profile" on the profile page to back it up.** It downloads the merged profile as JSON, and "Import" restores it — into a new browser, a new machine, or after clearing site data. Clearing your browser data without an export loses the profile permanently.
+
 One exception: to verify the one-page fit, draft LaTeX is sent to an external compile service (`latex.ytotech.com`) to be rendered and counted. Set `LATEX_RENDER_URL` to a self-hosted compiler to keep that on your own infrastructure too; the app degrades to a character-count heuristic if the service is unreachable.
 
 ## Tech
@@ -150,3 +156,55 @@ One exception: to verify the one-page fit, draft LaTeX is sent to an external co
 - `lib/llm.ts` — provider abstraction over Ollama and the Anthropic SDK
 - Schema-constrained JSON for analysis, profile merging, and cut planning
 - `pdf-lib` to count real pages of the compiled draft
+
+## Development
+
+```bash
+npm run dev          # dev server
+npm test             # vitest, unit tests for the pure helpers
+npm run test:watch   # vitest in watch mode
+npm run typecheck    # tsc --noEmit
+npm run lint         # next lint
+npm run format       # prettier --write .
+npm run eval         # model eval harness — needs a live model host
+```
+
+CI (`.github/workflows/ci.yml`) runs typecheck, lint and `vitest run` on Node 22 for every push and PR. It does **not** run the eval harness — that needs a live model host and minutes of GPU time.
+
+### Tests
+
+`npm test` covers the pure functions the whole app leans on: the visible-text extraction and one-page budget maths (`lib/latex.ts`), the cut sizing (`lib/render.ts`), the model-output parsers (`lib/llm.ts`), the one-page fitting loop (`lib/trim-loop.ts`, with a mocked page-count check), the rate limiter, and profile export/import.
+
+### Evaluating and comparing models
+
+`npm run eval` scores the analyzer against the fixtures in `evals/fixtures/` and prints a markdown table. Full details in [`evals/README.md`](evals/README.md).
+
+```bash
+npm run eval                                    # currently configured backend
+npm run eval -- --case cicd-implicit            # one fixture
+npm run eval -- --model gpt-oss:20b --json a.json
+npm run eval -- --model qwen3:32b   --json b.json
+```
+
+`--model` overrides `OLLAMA_MODEL` (or `ANTHROPIC_MODEL`) for a single run, so two models can be compared without editing `.env.local`. Comparing across model _families_ usually also needs `--think off`, because `OLLAMA_THINK` stays set from your env and a non-reasoning model rejects the `think` field with HTTP 400. (`--think off` unsets the variable; it never sends `think: false` — see the gpt-oss warning above.)
+
+The metric that matters is **recall on `present`**. The app turns analyzer-flagged `missing` keywords into hard "never mention this" constraints, so a keyword wrongly filed under `missing` suppresses real experience from your tailored résumé. The `cicd-implicit` fixture exists to catch exactly that: its résumé describes a GitHub Actions build/test/deploy pipeline without ever using the string "CI/CD".
+
+Measured with this harness (10 fixtures, same machine, `OLLAMA_THINK=low` for gpt-oss and `--think off` for Qwen, which does not support thinking):
+
+| Model                         | mean score | `present` P/R | `missing` P/R | honesty violations | mean time/case |
+| ----------------------------- | ---------- | ------------- | ------------- | ------------------ | -------------- |
+| **`gpt-oss:20b`**             | 68         | 81% / **90%** | 86% / 79%     | 3                  | **8.2s**       |
+| Qwen3-Coder-30B-A3B (Q4_K_XL) | 63         | 75% / **58%** | 51% / 60%     | 3                  | 79.8s          |
+
+On the `cicd-implicit` case specifically, `gpt-oss:20b` scored 100% recall on `present` against Qwen3-Coder's 40% — the same distinction the anecdote above describes, now reproducible. Qwen also claimed TypeScript, GraphQL and Redis on a résumé containing none of them.
+
+Model output is not deterministic even at low temperature; expect a few points of movement between runs. Look for consistent, large gaps rather than reading single-run differences.
+
+## Limitations
+
+**This is local-first software, and a full tailor run takes minutes.** One run is several sequential model passes — analyze, tailor, compile-and-count, then up to four verify-and-trim cycles, then a final re-analysis — and each pass waits on the one before it. That is fine on your own hardware, where the only cost is wall-clock. It does mean the app will exceed the function timeout on typical hosted platforms (Vercel's serverless functions cap out well below what a single tailor run needs, and the routes already declare `maxDuration` values of 60–300s that most free tiers will not honour). Deploy it on a machine you control — a laptop, a home server, a VPS with a long-lived Node process — rather than a serverless platform. The same applies to the rate limiter, which keeps its counters in process memory and therefore does not coordinate across instances.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

@@ -4,24 +4,9 @@
   "jd": "Business Intelligence Analyst\n\nRequirements:\n- SQL\n- Python\n- Gradient boosting models (XGBoost or LightGBM)\n- Power BI dashboards\n- Azure data services\n- Data visualization and stakeholder reporting",
   "resumeFile": "sampleresume.tex",
   "expected": {
-    "present": [
-      "sql",
-      "python",
-      "data visualization"
-    ],
-    "partial": [
-      "xgboost",
-      "power bi",
-      "azure"
-    ],
-    "missing": [
-      "lightgbm"
-    ]
+    "present": ["sql", "python", "data visualization"],
+    "partial": ["xgboost", "power bi", "azure"],
+    "missing": ["lightgbm"]
   },
-  "mustNotAppear": [
-    "xgboost",
-    "power bi",
-    "azure",
-    "lightgbm"
-  ]
+  "mustNotAppear": ["xgboost", "power bi", "azure", "lightgbm"]
 }

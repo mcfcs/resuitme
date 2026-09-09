@@ -5,26 +5,11 @@
   "jd": "Quantitative Analyst (Graduate)\n\nModel pricing and demand for a commerce marketplace.\n\nRequirements:\n- Python\n- Time series analysis\n- Statistics and regression\n- SQL\n- Pricing or demand modelling exposure\n\nNice to have:\n- R\n- Stochastic calculus\n- Bloomberg terminal",
   "resume": "CANDIDATE PROFILE\n\nEducation:\nAteneo de Manila University, BS Computer Science, GPA 3.58/4.00, Aug 2023 - Expected 2027.\nFirst Honors (3 semesters), Second Honors (2 semesters).\nCoursework: Big Data Processing, Pattern Recognition, Data Visualization.\n\nSkills:\nPython, SQL, Java, C++, JavaScript. Pandas, NumPy, scikit-learn, PyTorch.\nTime Series Regression, Dimensionality Reduction. Apache Spark, Hadoop, Hive.\nMatplotlib, Tableau. Django, React, Flask, Node.js.\n\nExperience:\n- Independent e-commerce operator (2020-present): sneaker resale across StockX and Alias. Developed demand-based dynamic pricing strategies to maximize margins and inventory turnover. Handled cross-border logistics and authentication.\n- Finance Core Team, CompSAt Connects 2026: payment collection, documentation, financial record-keeping.\n- IM Summit 2026 x Cisco Case Competition, 1st place team leader.\n\nProjects:\n- aCount: full-stack accounting platform. FIFO inventory matching, USD-to-PHP currency conversion, bank transfer reconciliation to compute real profit from actual deposits. React, Flask, Supabase.\n- Bank loan approval prediction: custom neural net, SERF activations, ResNet-style skip connections, 0.9514 recall on a class-imbalanced financial dataset.\n- Crossword generator with Tagalog implementation.\n",
   "expected": {
-    "present": [
-      "python",
-      "sql",
-      "time series",
-      "regression",
-      "pricing"
-    ],
-    "partial": [
-      "statistics"
-    ],
-    "missing": [
-      "r",
-      "stochastic calculus",
-      "bloomberg"
-    ]
+    "present": ["python", "sql", "time series", "regression", "pricing"],
+    "partial": ["statistics"],
+    "missing": ["r", "stochastic calculus", "bloomberg"]
   },
-  "mustNotAppear": [
-    "bloomberg",
-    "stochastic calculus"
-  ],
+  "mustNotAppear": ["bloomberg", "stochastic calculus"],
   "prosePhrasesForbidden": [
     "the résumé",
     "the resume",

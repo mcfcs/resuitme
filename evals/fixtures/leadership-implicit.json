@@ -4,23 +4,9 @@
   "jd": "Technical Program Manager (Early Career)\n\nYou will coordinate delivery across engineering teams and communicate with non-technical stakeholders.\n\nRequirements:\n- Team leadership\n- Stakeholder communication\n- Project coordination and scheduling\n- Comfort reading technical designs\n- Budget ownership\n\nNice to have:\n- Jira or equivalent tracker\n- Agile / Scrum certification\n- Experience in public sector projects",
   "resumeFile": "sampleresume.tex",
   "expected": {
-    "present": [
-      "team leadership",
-      "project coordination",
-      "budget"
-    ],
-    "partial": [
-      "stakeholder communication"
-    ],
-    "missing": [
-      "jira",
-      "agile",
-      "scrum"
-    ]
+    "present": ["team leadership", "project coordination", "budget"],
+    "partial": ["stakeholder communication"],
+    "missing": ["jira", "agile", "scrum"]
   },
-  "mustNotAppear": [
-    "jira",
-    "scrum certification",
-    "certified scrum master"
-  ]
+  "mustNotAppear": ["jira", "scrum certification", "certified scrum master"]
 }

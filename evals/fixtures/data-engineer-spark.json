@@ -4,27 +4,9 @@
   "jd": "Data Engineer\n\nBuild and operate batch pipelines over a multi-terabyte warehouse.\n\nRequirements:\n- Apache Spark\n- SQL\n- Python\n- Distributed storage (HDFS, Hive, or equivalent)\n- Workflow orchestration with Airflow\n\nNice to have:\n- dbt\n- Snowflake\n- Scala",
   "resumeFile": "sampleresume.tex",
   "expected": {
-    "present": [
-      "apache spark",
-      "sql",
-      "python",
-      "hive",
-      "hadoop"
-    ],
-    "partial": [
-      "hdfs"
-    ],
-    "missing": [
-      "airflow",
-      "dbt",
-      "snowflake",
-      "scala"
-    ]
+    "present": ["apache spark", "sql", "python", "hive", "hadoop"],
+    "partial": ["hdfs"],
+    "missing": ["airflow", "dbt", "snowflake", "scala"]
   },
-  "mustNotAppear": [
-    "airflow",
-    "dbt",
-    "snowflake",
-    "scala"
-  ]
+  "mustNotAppear": ["airflow", "dbt", "snowflake", "scala"]
 }

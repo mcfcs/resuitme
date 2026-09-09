@@ -76,11 +76,11 @@ Drop a JSON file in `fixtures/`:
   "name": "unique-name",
   "notes": "Why this case exists and what failure it catches.",
   "jd": "job description text",
-  "resume": "\\documentclass...",   // or "resumeFile": "sampleresume.tex"
-  "inputKind": "resume",             // or "profile"; defaults to resume
+  "resume": "\\documentclass...", // or "resumeFile": "sampleresume.tex"
+  "inputKind": "resume", // or "profile"; defaults to resume
   "expected": { "present": [], "partial": [], "missing": [] },
   "mustNotAppear": [],
-  "prosePhrasesForbidden": []        // optional
+  "prosePhrasesForbidden": [], // optional
 }
 ```
 

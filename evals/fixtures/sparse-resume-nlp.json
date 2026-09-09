@@ -4,13 +4,8 @@
   "jd": "NLP Research Engineer\n\nWork on transformer models for low-resource languages.\n\nRequirements:\n- Python\n- PyTorch\n- Transformer architectures (BERT, GPT family)\n- Hugging Face ecosystem\n- Tokenization for morphologically rich languages\n- Published research or a strong thesis\n\nNice to have:\n- Low-resource / multilingual NLP\n- CUDA optimization\n- Distributed training",
   "resume": "\\documentclass[letterpaper,11pt]{article}\n\\usepackage[empty]{fullpage}\n\\usepackage{enumitem}\n\\newcommand{\\resumeItem}[1]{\\item\\small{#1}}\n\\begin{document}\n\n\\begin{center}\n    \\textbf{\\Huge Gregorio Delfin Pascua} \\\\\n    \\small gregoriodelfinpascua@gmail.com\n\\end{center}\n\n\\section{Education}\nAteneo de Manila University --- BS Computer Science, GPA 3.58/4.00, Expected 2027\n\n\\section{Skills}\nPython, SQL, Java, PyTorch, scikit-learn, Pandas\n\n\\section{Projects}\n\\begin{itemize}[leftmargin=0.15in]\n  \\resumeItem{Crossword generator with a Tagalog implementation: preprocessed dictionary datasets and matched synonymous meanings to generate Tagalog-to-Tagalog clues across 700,000+ clues.}\n  \\resumeItem{Bank loan approval model in PyTorch using SERF activations and ResNet-style skip connections; 0.9514 recall on an imbalanced dataset.}\n\\end{itemize}\n\n\\end{document}\n",
   "expected": {
-    "present": [
-      "python",
-      "pytorch"
-    ],
-    "partial": [
-      "low-resource"
-    ],
+    "present": ["python", "pytorch"],
+    "partial": ["low-resource"],
     "missing": [
       "transformer",
       "bert",
@@ -20,10 +15,5 @@
       "published research"
     ]
   },
-  "mustNotAppear": [
-    "bert",
-    "hugging face",
-    "cuda",
-    "published"
-  ]
+  "mustNotAppear": ["bert", "hugging face", "cuda", "published"]
 }

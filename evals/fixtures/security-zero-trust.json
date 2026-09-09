@@ -4,14 +4,8 @@
   "jd": "Security Engineer I\n\nSupport our zero-trust rollout and security architecture reviews.\n\nRequirements:\n- Zero Trust architecture concepts\n- Familiarity with NIST security frameworks\n- Network segmentation\n- Python scripting\n\nNice to have:\n- SIEM tooling (Splunk, Elastic)\n- Penetration testing\n- Incident response experience\n- Security certifications (Security+, CISSP)",
   "resumeFile": "sampleresume.tex",
   "expected": {
-    "present": [
-      "zero trust",
-      "nist",
-      "python"
-    ],
-    "partial": [
-      "network segmentation"
-    ],
+    "present": ["zero trust", "nist", "python"],
+    "partial": ["network segmentation"],
     "missing": [
       "siem",
       "splunk",
@@ -21,10 +15,5 @@
       "security+"
     ]
   },
-  "mustNotAppear": [
-    "cissp",
-    "security+",
-    "splunk",
-    "penetration testing"
-  ]
+  "mustNotAppear": ["cissp", "security+", "splunk", "penetration testing"]
 }
