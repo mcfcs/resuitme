@@ -87,3 +87,39 @@ Drop a JSON file in `fixtures/`:
 Keyword matching is lenient about surface form: punctuation and case are
 normalised and a match counts when either string contains the other, so
 `"ci/cd"` matches the model's `"CI/CD pipelines"`.
+
+## Generation suite
+
+```bash
+npm run eval -- --suite generation
+npm run eval -- --suite generation --template compact
+npm run eval -- --suite generation --case cicd-implicit --json out.json
+```
+
+Scores the résumé the app actually **produces**, not just the analyzer's
+opinion of the input. For each fixture it runs the real `/api/build` handler
+through `lib/trim-loop.ts` — the same loop the app uses — then compiles and
+scans the result.
+
+Every metric is objective; there is no judge model, because a judge model's
+opinion of a résumé is exactly the thing that cannot be verified.
+
+| Metric | Why it matters |
+| --- | --- |
+| ATS score | From the PDF text layer. Catches unextractable output. |
+| Pages | Anything but 1 is a whole-pipeline failure. |
+| `must_include` coverage | Did the analyzer's ranked picks survive into the output? |
+| Honesty violations | Did a disclaimed keyword appear anyway? Any hit is a contract breach. |
+| Placeholder leaks | The prompt promises zero; nothing else checks. |
+| Trims | Proxy for how well `targetChars` is calibrated for the layout. |
+| Chars/Budget | How full the page actually is. A low ratio means content is being left on the table. |
+
+`must_include` coverage is the headline. The analyzer produces 3–5 specific
+ranked picks, and those are now interpolated into the generation prompt — this
+number is what turns "we think that helped" into evidence.
+
+`--template <id>` runs the suite against a specific layout, which is how the
+`targetChars` calibration for a new layout gets validated.
+
+Exits non-zero on any error, honesty violation, placeholder leak, or critical
+lint finding, so it can gate a manual release check.

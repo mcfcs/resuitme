@@ -22,6 +22,11 @@
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  evaluateGeneration,
+  generationReport,
+  type GenerationResult,
+} from "./generation";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
@@ -341,6 +346,8 @@ function parseArgs(argv: string[]) {
     only?: string;
     json?: string;
     think?: string;
+    suite?: string;
+    template?: string;
   } = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -348,6 +355,8 @@ function parseArgs(argv: string[]) {
     else if (a === "--case") out.only = argv[++i];
     else if (a === "--json") out.json = argv[++i];
     else if (a === "--think") out.think = argv[++i];
+    else if (a === "--suite") out.suite = argv[++i];
+    else if (a === "--template") out.template = argv[++i];
     else if (a === "--help" || a === "-h") {
       console.log(
         [
@@ -359,7 +368,7 @@ function parseArgs(argv: string[]) {
           "                 at all (Ollama rejects the request with HTTP 400).",
           "                 'off' UNSETS the variable rather than sending",
           "                 think:false, which crashes gpt-oss's llama-server.",
-          "  --case <name>  Run a single fixture by name",
+          "  --suite <name> analyzer (default) | generation",
           "  --json <path>  Also write raw results as JSON",
           "",
           "Needs a live model host; not run in CI.",
@@ -373,6 +382,132 @@ function parseArgs(argv: string[]) {
     }
   }
   return out;
+}
+
+// --------------------------------------------------------- generation ------
+
+/**
+ * Build a résumé for each fixture and score the OUTPUT. Needs a live model and
+ * the LaTeX compile service; far slower than the analyzer suite.
+ */
+async function runGenerationSuite(
+  fixtures: Fixture[],
+  label: string,
+  templateId?: string,
+): Promise<GenerationResult[]> {
+  const { POST: buildPost } = await import("../app/api/build/route");
+  const { POST: verifyPost } = await import("../app/api/tailor/verify/route");
+  const { POST: renderPost } = await import("../app/api/render/route");
+
+  // The route handlers are typed against NextRequest but at runtime only use
+  // the standard Request surface (.json()), so a plain Request suffices.
+  type RouteHandler = (r: never) => Promise<Response>;
+  const call = async (handler: RouteHandler, body: unknown) => {
+    const res = await handler(
+      new Request("http://localhost/", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      }) as never,
+    );
+    return { res, data: (await res.json()) as Record<string, unknown> };
+  };
+
+  const results: GenerationResult[] = [];
+
+  for (const fx of fixtures) {
+    process.stderr.write(`  building ${fx.name} ... `);
+
+    // Each generation case needs an analysis first — that is where
+    // must_include comes from, which is the metric we most want to move.
+    let analysis: Analysis;
+    try {
+      analysis = await analyze(fx);
+    } catch (e) {
+      results.push({
+        name: fx.name,
+        ok: false,
+        ms: 0,
+        error: `analyze failed: ${e instanceof Error ? e.message : String(e)}`,
+      });
+      process.stderr.write("FAILED (analyze)\n");
+      continue;
+    }
+
+    // The build route force-marks analyzer-missing keywords as "none", so
+    // these are exactly the terms the output must not claim.
+    const disclaimed = analysis.keyword_coverage?.missing ?? [];
+
+    const r = await evaluateGeneration(
+      fx.name,
+      analysis,
+      disclaimed,
+      {
+        build: async (cuts, budget) => {
+          const { res, data } = await call(buildPost, {
+            jobDescription: fx.jd,
+            templateId,
+            profileContext: { baseCvLatex: fx.resume },
+            analysis,
+            budget,
+            cuts,
+          });
+          if (!res.ok) throw new Error(String(data.error ?? res.status));
+          return data.latex as string;
+        },
+        requestCuts: async (latex, currentChars, overBy) => {
+          const { res, data } = await call(verifyPost, {
+            latex,
+            jobDescription: fx.jd,
+            budget: 0,
+            currentChars,
+            overBy,
+          });
+          if (!res.ok || !Array.isArray(data.suggestedCuts)) return [];
+          return data.suggestedCuts as string[];
+        },
+        compile: async (latex) => {
+          const { res, data } = await call(renderPost, { latex });
+          if (!res.ok || !data.compiled) return null;
+          // The route returns a page count, not bytes. Re-fetch through the
+          // same service to get the PDF for text extraction.
+          return await compileToBytes(latex);
+        },
+      },
+      templateId,
+    );
+
+    process.stderr.write(r.ok ? `${(r.ms / 1000).toFixed(1)}s\n` : "FAILED\n");
+    results.push(r);
+  }
+
+  void label;
+  return results;
+}
+
+/** Compile via the same service /api/render uses, returning raw PDF bytes. */
+async function compileToBytes(latex: string): Promise<Uint8Array | null> {
+  const url =
+    process.env.LATEX_RENDER_URL || "https://latex.ytotech.com/builds/sync";
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/pdf",
+      },
+      body: JSON.stringify({
+        compiler: "pdflatex",
+        resources: [{ main: true, content: latex }],
+      }),
+    });
+    if (!res.ok || !(res.headers.get("content-type") ?? "").includes("pdf")) {
+      return null;
+    }
+    return new Uint8Array(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
 }
 
 async function main() {
@@ -412,6 +547,25 @@ async function main() {
   const fixtures = loadFixtures(args.only);
   console.error(`Backend: ${label}`);
   console.error(`Fixtures: ${fixtures.length}\n`);
+
+  if (args.suite === "generation") {
+    const gen = await runGenerationSuite(fixtures, label, args.template);
+    console.error("");
+    console.log(generationReport(gen, label));
+    if (args.json) {
+      writeFileSync(args.json, JSON.stringify(gen, null, 2));
+      console.error(`\nRaw results written to ${args.json}`);
+    }
+    const bad = gen.some(
+      (r) =>
+        !r.ok ||
+        (r.honestyViolations?.length ?? 0) > 0 ||
+        (r.placeholderLeaks?.length ?? 0) > 0 ||
+        (r.criticalFindings?.length ?? 0) > 0,
+    );
+    process.exitCode = bad ? 1 : 0;
+    return;
+  }
 
   const results: CaseResult[] = [];
   for (const fx of fixtures) {
