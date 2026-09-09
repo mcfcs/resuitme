@@ -265,28 +265,36 @@ npm run eval -- --model qwen3:32b   --json b.json
 ### Generation quality (measured)
 
 `npm run eval -- --suite generation` builds a résumé per fixture through the
-real pipeline and scores the output. Baseline on `gpt-oss:20b`, 10 fixtures:
+real pipeline and scores the output. Measured on `gpt-oss:20b`, 10 fixtures,
+before and after two prompt fixes this harness surfaced:
 
-| Metric                  | Result                                |
-| ----------------------- | ------------------------------------- |
-| ATS score               | **100** mean                          |
-| One-page                | **10/10**                             |
-| `must_include` coverage | **98%**                               |
-| Honesty violations      | 1 across 10 cases                     |
-| Placeholder leaks       | 0                                     |
-| Trim passes             | 1.0 mean (no case needed re-trimming) |
-| Time per case           | ~25s                                  |
+| Metric                  | Before       | After        |
+| ----------------------- | ------------ | ------------ |
+| ATS score               | 100 mean     | **100** mean |
+| One-page                | 10/10        | **10/10**    |
+| `must_include` coverage | 98%          | **100%**     |
+| Honesty violations      | 1            | **0**        |
+| Placeholder leaks       | 0            | **0**        |
+| Page fill               | 62% (30–91%) | 63% (31–89%) |
+| Time per case           | ~25s         | ~29s         |
 
-Two open issues this surfaced, recorded here rather than papered over:
+The two fixes were both prompt bugs the eval made visible:
 
-- **The page is often underfilled.** Output averages ~62% of the available
-  character budget, ranging from 30% to 91%. The one-page constraint is
-  satisfied, but on several cases the model stops well short of a full page
-  and leaves real experience unused — the opposite of the failure the trim
-  loop was built for. Worth attacking next; the eval now makes it visible.
-- **One honesty violation** (`adjacent-not-equal` surfaced "azure data
-  services", which the candidate does not have). One breach in ten is one too
-  many for a hard constraint, and the suite exits non-zero on it.
+- **Underfilled pages.** The length section gave five separate instructions to
+  cut and none saying a half-empty page is also wrong, so a cautious model
+  stopped early — correctly, by the rules it had. Length is now a band
+  (85–100% of budget) with an explicit "go back and add more" check. The mean
+  barely moved, but the ceiling did: the best cases now reach 84–89%, and the
+  remaining low outliers are fixtures with genuinely thin source material.
+- **Placeholder leakage.** One fixture leaked `Full Name` and
+  `email@example.com`. The fixture's profile contains neither, so the model had
+  nothing to substitute and its only alternative was inventing a name — which
+  the honesty contract forbids. The prompt now says to omit the element
+  entirely. Verified: 2 leaks → 0.
+
+**Page fill remains the open issue.** A 63% mean still means real experience is
+being left unused on some inputs. It is a content-selection problem rather than
+a formatting one, and worth another pass.
 
 `--model` overrides `OLLAMA_MODEL` (or `ANTHROPIC_MODEL`) for a single run, so two models can be compared without editing `.env.local`. Comparing across model _families_ usually also needs `--think off`, because `OLLAMA_THINK` stays set from your env and a non-reasoning model rejects the `think` field with HTTP 400. (`--think off` unsets the variable; it never sends `think: false` — see the gpt-oss warning above.)
 
