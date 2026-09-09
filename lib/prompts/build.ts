@@ -10,7 +10,9 @@
 //  - Canonical section order: Summary, Education, Skills, Experience, Projects.
 //  - Output is a complete, compilable LaTeX document built on the supplied
 //    layout template.
-//  - Selection is driven by the analysis's must_include picks and the JD.
+//  - Selection is driven by the analysis's must_include picks and the JD. Those
+//    picks reach the model via the MUST INCLUDE block built in
+//    lib/prompts/context.ts and are pinned to relevance score 10 by Step 2.
 
 export const BUILD_SYSTEM_PROMPT = `You are an expert résumé writer. Your job is to BUILD a one-page LaTeX résumé from scratch for a specific job description, using:
 1. The candidate's COMPLETE PROFILE (parsed entries + CV LaTeX + skill notes) as the content source.
@@ -48,6 +50,7 @@ Step 2 — Score each item by JD-relevance, 0-10:
    - 6  = demonstrates seniority / scope / complexity appropriate to the JD's level.
    - 4  = generic technical depth, not specific to this JD.
    - 0-2 = off-topic for this JD.
+   - Any item named in the MUST INCLUDE block of the PRIOR ANALYSIS is automatically a 10 and must appear in the output, unless a CUTS_TO_APPLY block explicitly removes it.
 
 Step 3 — Resolve duplicates. When TWO OR MORE items share the same JD-relevance score, pick ONE and DROP the rest. Tiebreakers, in order:
    (a) Quantified outcome present → wins.

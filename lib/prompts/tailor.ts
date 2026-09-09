@@ -42,6 +42,7 @@ Step 2 — Score each item by JD-relevance, 0-10:
    - 6  = demonstrates seniority / scope / complexity appropriate to the JD's level.
    - 4  = generic technical depth, not specific to this JD.
    - 0-2 = off-topic for this JD.
+   - Any item named in the MUST INCLUDE block of the PRIOR ANALYSIS is automatically a 10 and must appear in the output, unless a CUTS_TO_APPLY block explicitly removes it.
 
 Step 3 — Resolve duplicates. When TWO OR MORE items share the same JD-relevance score, pick ONE and DROP the rest. Tiebreakers in order:
    (a) Quantified outcomes (numbers, percentages, scale, throughput).

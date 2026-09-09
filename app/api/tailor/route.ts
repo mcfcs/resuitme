@@ -2,16 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { completeText, llmErrorResponse } from "@/lib/llm";
 import type { Analysis } from "@/lib/types";
 import type { ParsedProfile } from "@/lib/profile";
+import { COMPOSE_TARGET_FRACTION } from "@/lib/latex";
+import type { HonestSignals } from "@/lib/prompts/context";
+import {
+  analysisContextBlock,
+  filterMustInclude,
+  honestyBlock,
+  mergeHonestSignals,
+} from "@/lib/prompts/context";
 import { TAILOR_SYSTEM_PROMPT } from "@/lib/prompts/tailor";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-export type HonestVerdict = "have" | "partial" | "none";
-export type HonestSignals = {
-  perKeyword: Record<string, HonestVerdict>;
-  notes?: string;
-};
+// Re-exported so existing client imports from this route keep working.
+export type { HonestVerdict, HonestSignals } from "@/lib/prompts/context";
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,50 +49,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const analysisContext = analysis
-      ? `\n=== PRIOR ANALYSIS (for prioritization, not for fabrication) ===
-Score: ${analysis.score}/100
-Verdict: ${analysis.verdict}
-Top gaps: ${analysis.gaps.join("; ")}
-Missing keywords: ${analysis.keyword_coverage.missing.join(", ")}
-Suggested edits: ${analysis.suggestions.join("; ")}
-`
-      : "";
-
-    // Merge analyzer-flagged missing keywords into the honesty map as hard
-    // "none" — but only for keywords the user hasn't already given an explicit
-    // verdict for. Mirrors /api/build so both flows treat analyzer-detected
-    // gaps as a hard block rather than a soft suggestion.
-    const mergedHonest: HonestSignals = honest
-      ? { ...honest, perKeyword: { ...honest.perKeyword } }
-      : { perKeyword: {} };
-    if (analysis?.keyword_coverage?.missing) {
-      for (const kw of analysis.keyword_coverage.missing) {
-        if (!(kw in mergedHonest.perKeyword)) {
-          mergedHonest.perKeyword[kw] = "none";
-        }
-      }
-    }
-
-    let honestBlock = "";
-    {
-      const have: string[] = [];
-      const partial: string[] = [];
-      const none: string[] = [];
-      for (const [k, v] of Object.entries(mergedHonest.perKeyword)) {
-        if (v === "have") have.push(k);
-        else if (v === "partial") partial.push(k);
-        else if (v === "none") none.push(k);
-      }
-      if (have.length + partial.length + none.length > 0) {
-        honestBlock = `\n=== HONESTY SIGNALS (HARD CONSTRAINTS — apply strictly) ===
-Skills/keywords the candidate HAS (safe to emphasize): ${have.length ? have.join(", ") : "(none specified)"}
-Skills/keywords the candidate has PARTIAL/limited experience with (only mention if evidence exists, never as headline expertise): ${partial.length ? partial.join(", ") : "(none specified)"}
-Skills/keywords the candidate DOES NOT HAVE (NEVER include, NEVER paraphrase, omit entirely): ${none.length ? none.join(", ") : "(none specified)"}
-${mergedHonest.notes?.trim() ? `Candidate's notes about their experience: ${mergedHonest.notes.trim()}` : ""}
-`;
-      }
-    }
+    const mergedHonest = mergeHonestSignals(honest, analysis);
+    const mustIncludePicks = filterMustInclude(
+      analysis?.must_include,
+      mergedHonest.perKeyword,
+    );
+    const analysisContext = analysisContextBlock(analysis, mustIncludePicks);
+    const honestBlock = honestyBlock(mergedHonest);
 
     let profileBlock = "";
     if (profileContext) {
@@ -118,7 +86,7 @@ ${profileContext.additionalSkills.trim()}`,
       typeof budget === "number" && budget > 0
         ? `\n=== VISIBLE_CHAR_BUDGET (HARD CEILING) ===
 ${budget} visible characters maximum.
-Target ~${Math.round(budget * 0.95)} (95% of budget) to leave safety margin.
+Target ~${Math.round(budget * COMPOSE_TARGET_FRACTION)} (${Math.round(COMPOSE_TARGET_FRACTION * 100)}% of budget) to leave safety margin.
 Visible characters = everything that renders after stripping LaTeX commands, comments, and braces.
 The output's visible-char count will be measured after you respond. Going over forces a re-trim.
 `

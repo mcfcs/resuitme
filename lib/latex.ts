@@ -21,6 +21,13 @@ export const TARGET_ONE_PAGE_CHARS = 3600;
 // real one-page capacity.
 export const SAFETY_MARGIN = 0.95;
 
+// The in-prompt compose target, as a fraction of the stated budget. The budget
+// handed to the model ALREADY has SAFETY_MARGIN applied, so this is a second,
+// deliberate headroom that absorbs visible-char vs. real-render imprecision.
+// MUST match the percentage stated in lib/prompts/{build,tailor}.ts — there is
+// a test pinning the two together.
+export const COMPOSE_TARGET_FRACTION = 0.9;
+
 // Slack tolerance — only skip the trim pass if the overshoot is this small.
 // Tight: even ~2-3% overshoot tends to push real LaTeX onto a second page.
 export const BUDGET_TOLERANCE = 0.005;
