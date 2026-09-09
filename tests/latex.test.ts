@@ -14,6 +14,7 @@ import {
   SAFETY_MARGIN,
   BUDGET_TOLERANCE,
 } from "@/lib/latex";
+import { TEMPLATES } from "@/lib/templates";
 
 const SAMPLE = readFileSync(
   fileURLToPath(new URL("../sampleresume.tex", import.meta.url)),
@@ -272,5 +273,32 @@ describe("isWithinBudget", () => {
   it("honours a zero tolerance", () => {
     expect(isWithinBudget(1000, 1000, 0)).toBe(true);
     expect(isWithinBudget(1001, 1000, 0)).toBe(false);
+  });
+});
+
+describe("layout density guard", () => {
+  // The budget constants in lib/latex.ts are empirically tuned to the Classic
+  // layout's density. These bounds are not style preferences — they are a
+  // tripwire: a macro edit that meaningfully changes how much text fits on a
+  // page must fail here and force a recalibration rather than silently
+  // producing two-page résumés.
+  it("classic template's placeholder body stays in its measured range", () => {
+    const chars = visibleChars(TEMPLATES.classic.latex);
+    expect(chars).toBeGreaterThan(900);
+    expect(chars).toBeLessThan(1400);
+  });
+
+  it("the sample résumé stays a plausible full single page", () => {
+    // Measured at 3,865 and verified to compile to exactly one page.
+    const chars = visibleChars(SAMPLE);
+    expect(chars).toBeGreaterThan(3400);
+    expect(chars).toBeLessThan(4200);
+  });
+
+  it("the sample résumé contains no ATS-hostile glyphs", () => {
+    // The peso sign extracted from the compiled PDF as U+0091, silently
+    // corrupting a quantified achievement. Guard the whole class.
+    const risky = /[-�₡-₽]/;
+    expect(risky.test(SAMPLE)).toBe(false);
   });
 });
