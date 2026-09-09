@@ -63,6 +63,19 @@ person is in the wrong profession". Populate the "fit" object to separate them.
   "adjacent" encourages a hopeless application and wastes the candidate's time.
   Equally, do NOT over-flag: a neighbouring technical field is "adjacent", not
   "unrelated".
+- "adjacent" is a NARROW category, not a comfortable middle. It means the two
+  fields share a substantial body of method or tooling — CS and data analytics,
+  CS and quantitative research, mechanical and industrial engineering. It does
+  NOT mean "the candidate could probably learn this" or "both involve
+  computers". Accounting, finance, HR, marketing, sales, law and nursing are
+  "unrelated" to a computer science background even when the posting mentions
+  spreadsheets, systems, or reporting tools.
+- Test yourself: if the candidate had to be taught the field's core body of
+  knowledge from scratch to do the job, it is "unrelated", however many
+  incidental tools overlap.
+- Judge the ROLE the posting is actually for, not the department that listed it
+  or the industry the company is in. A software role at a bank is "direct" for
+  a CS candidate; a finance role at a software company is not.
 - transferable must name REAL, SPECIFIC things the candidate has done that
   still count across the gap — a led team, a built system, a quantified
   outcome. Never generic traits like "communication" or "attention to detail".

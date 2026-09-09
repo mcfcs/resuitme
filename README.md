@@ -262,6 +262,35 @@ npm run eval -- --model gpt-oss:20b --json a.json
 npm run eval -- --model qwen3:32b   --json b.json
 ```
 
+### Fit against real jobs (measured)
+
+`npm run eval -- --suite fit` runs the analyzer over 90 real internship
+postings harvested from JobStreet and Prosple, stratified so both failure
+directions are visible. Measured on `gpt-oss:20b`, before and after tightening
+the `adjacent` definition:
+
+| Metric                                   | Before | After   |
+| ---------------------------------------- | ------ | ------- |
+| Mismatch detection (out-of-field)        | 72%    | **91%** |
+| False alarms (in-field, wrongly flagged) | 19%    | **14%** |
+| Roles escaping into `adjacent`           | 9      | **3**   |
+| Transferable evidence named              | 93%    | 89%     |
+
+The failure the numbers exposed was `adjacent` being used as a comfortable
+middle: Finance and Accounting roles were scoring 68-72 as "adjacent" to a CS
+background. The rubric now defines it narrowly — the two fields must share a
+substantial body of method, not merely both involve computers — with an
+explicit test: _if the candidate would have to be taught the field's core body
+of knowledge from scratch, it is unrelated._
+
+**The remaining failures are mostly bad labels, not bad judgments.** Of the
+three residual false alarms, two are postings the job board filed under
+Information & Communication Technology whose titles are "HR OJT / Intern" and
+"Marketing OJT / Intern" — the model is right and the corpus is wrong. One
+residual miss, "Global IT Intern", is likewise labelled mismatch but is
+genuinely an IT role. Read the failing cases before trusting the rate; see
+[`evals/README.md`](evals/README.md).
+
 ### Generation quality (measured)
 
 `npm run eval -- --suite generation` builds a résumé per fixture through the

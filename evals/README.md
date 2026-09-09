@@ -123,3 +123,44 @@ number is what turns "we think that helped" into evidence.
 
 Exits non-zero on any error, honesty violation, placeholder leak, or critical
 lint finding, so it can gate a manual release check.
+
+## Fit suite
+
+```bash
+npm run eval -- --suite fit
+npm run eval -- --suite fit --corpus path/to/other.json --json out.json
+```
+
+Runs the analyzer over the harvested real-JD corpus and scores whether it
+notices out-of-field applications. Reports two rates, because they are different
+bugs: **mismatch detection** (out-of-field roles correctly flagged `unrelated`)
+and **false alarms** (in-field roles wrongly flagged). A detector that flags
+everything scores 100% on the first and is useless.
+
+Only `match` and `mismatch` are scored. `adjacent` and `generic` are reported
+but deliberately unscored — a marketing-adjacent analytics internship is
+genuinely arguable, and grading arguable cases makes the headline number
+meaningless.
+
+### The strata are not ground truth
+
+The corpus is stratified by each job board's own `classification` field, and
+**the boards miscategorise**. Measured on the first full run: of 4 apparent
+false alarms, 3 were postings the board filed under Information &
+Communication Technology whose titles were "HR OJT / Intern" and "Marketing
+OJT / Intern" — the model was right and the label was wrong. Re-scoring against
+the job _title_ instead moved accuracy from 72%/81% to 78% on unambiguous
+titles.
+
+So treat the reported rates as a floor, not a measurement, and read the failing
+cases before concluding anything:
+
+```bash
+node -e "const r=require('./out.json');
+  for(const c of r.filter(x=>x.stratum==='mismatch'&&x.domainMatch!=='unrelated'))
+    console.log(c.domainMatch, c.title, c.score)"
+```
+
+That is how the real weakness surfaced: `adjacent` was being used as a
+comfortable middle for Finance and Accounting roles scoring 68–72, rather than
+as the narrow "these fields share real method" category it is meant to be.
