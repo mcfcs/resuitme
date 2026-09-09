@@ -303,6 +303,23 @@ On the `cicd-implicit` case specifically, `gpt-oss:20b` scored 100% recall on `p
 
 Model output is not deterministic even at low temperature; expect a few points of movement between runs. Look for consistent, large gaps rather than reading single-run differences.
 
+### Design
+
+The interface is a sheet of stock on a press bed — the materials of typesetting,
+because that is what the tool does. Tokens, rules and primitives are documented
+in [`docs/design.md`](docs/design.md).
+
+Screenshots are part of the workflow, not a claim:
+
+```bash
+node scripts/shoot.mjs http://127.0.0.1:3000 screenshots
+```
+
+Captures every route at 390 / 834 / 1440 / 1920 and **exits non-zero on
+horizontal overflow or a WCAG AA contrast failure**. The contrast audit found 14
+real failures on a redesign that already looked finished, including disabled
+buttons at 1.00:1.
+
 ### Fine-tuning
 
 Deferred deliberately, with the reasoning and a ready-to-run plan in
