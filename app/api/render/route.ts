@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib";
+import { scanPdfBytes, type PdfScanResult } from "@/lib/ats/pdf-scan";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -31,13 +32,19 @@ export type RenderResponse = {
   error?: string;
   // Truncated compiler log, surfaced on failure for debugging.
   log?: string;
+  // Present only when the request asked for it. Null when the scan failed or
+  // timed out — callers fall back to the source lint rather than breaking.
+  ats?: PdfScanResult | null;
 };
 
 export async function POST(req: NextRequest) {
   try {
-    const { latex, compiler } = (await req.json()) as {
+    const { latex, compiler, ats } = (await req.json()) as {
       latex?: string;
       compiler?: string;
+      // Opt-in: text extraction costs real time, and the trim loop calls this
+      // route on every pass just to count pages. Only the final draft asks.
+      ats?: boolean;
     };
 
     if (!latex?.trim()) {
@@ -117,12 +124,15 @@ export async function POST(req: NextRequest) {
       pages = null;
     }
 
+    const atsReport = ats ? await scanPdfBytes(bytes) : undefined;
+
     return NextResponse.json(
       {
         ok: pages !== null,
         compiled: true,
         pages,
         compiler: chosen,
+        ...(ats ? { ats: atsReport } : {}),
       } satisfies RenderResponse,
       { status: 200 },
     );

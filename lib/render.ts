@@ -1,3 +1,5 @@
+import type { AtsScore } from "@/lib/ats/score";
+
 // Client-safe wrapper around the /api/render route. Keeps the PDF-parsing /
 // external-compile machinery server-side; this module only does fetch + types
 // so it's safe to import from client components without bundling pdf-lib.
@@ -77,4 +79,35 @@ export function cutTarget(
     return Math.max(heuristicOvershoot, perPageFloor);
   }
   return Math.max(heuristicOvershoot, 0);
+}
+
+/** What /api/render returns when ats:true — the score plus the extracted text. */
+export type AtsScanResult = AtsScore & { pages: number; text: string };
+
+/**
+ * Compile the LaTeX and score what a résumé parser would extract from the PDF.
+ *
+ * Never throws — on any failure it returns null so callers fall back to the
+ * source lint (lib/ats/source-lint.ts), which needs no compile. Same contract
+ * as checkPageCount above.
+ *
+ * Call this ONCE on the final accepted draft, not inside the trim loop: text
+ * extraction is real work, and the loop only needs the page count.
+ */
+export async function scanAts(
+  latex: string,
+  compiler?: "pdflatex" | "xelatex" | "lualatex",
+): Promise<AtsScanResult | null> {
+  try {
+    const res = await fetch("/api/render", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ latex, compiler, ats: true }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { ats?: AtsScanResult | null };
+    return data.ats ?? null;
+  } catch {
+    return null;
+  }
 }
