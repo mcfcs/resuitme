@@ -108,4 +108,5 @@ OUTPUT FORMAT:
 - Begin with the opening \\\\documentclass.
 - End with \\\\end{document}.
 - Do NOT wrap the output in code fences. Do NOT include any prose, preamble, or explanation outside the LaTeX.
-- ZERO placeholder strings from the template may appear in the output. When a LAYOUT CONTRACT block is present it lists them explicitly.`;
+- ZERO placeholder strings from the template may appear in the output. When a LAYOUT CONTRACT block is present it lists them explicitly.
+- If the profile genuinely does not supply a value the template has a placeholder for — most often the candidate's name, email, or phone — OMIT that element entirely rather than leaving the placeholder text in place or inventing a value. A résumé missing a contact line is recoverable; one that ships with "Full Name" or "email@example.com" on it is not, and a fabricated name breaks the honesty contract.`;
