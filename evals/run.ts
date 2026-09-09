@@ -27,6 +27,7 @@ import {
   generationReport,
   type GenerationResult,
 } from "./generation";
+import { fitReport, loadCorpus, toCase, type FitCase } from "./fit-matrix";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
@@ -342,6 +343,7 @@ function parseArgs(argv: string[]) {
     think?: string;
     suite?: string;
     template?: string;
+    corpus?: string;
   } = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -351,6 +353,7 @@ function parseArgs(argv: string[]) {
     else if (a === "--think") out.think = argv[++i];
     else if (a === "--suite") out.suite = argv[++i];
     else if (a === "--template") out.template = argv[++i];
+    else if (a === "--corpus") out.corpus = argv[++i];
     else if (a === "--help" || a === "-h") {
       console.log(
         [
@@ -362,7 +365,8 @@ function parseArgs(argv: string[]) {
           "                 at all (Ollama rejects the request with HTTP 400).",
           "                 'off' UNSETS the variable rather than sending",
           "                 think:false, which crashes gpt-oss's llama-server.",
-          "  --suite <name> analyzer (default) | generation",
+          "  --suite <name> analyzer (default) | generation | fit",
+          "  --corpus <path> real-JD corpus for --suite fit",
           "  --json <path>  Also write raw results as JSON",
           "",
           "Needs a live model host; not run in CI.",
@@ -504,6 +508,57 @@ async function compileToBytes(latex: string): Promise<Uint8Array | null> {
   }
 }
 
+// --------------------------------------------------------------- fit -------
+
+/**
+ * Run the analyzer over the harvested real-JD corpus and score whether it
+ * notices out-of-field applications. One model call per JD.
+ */
+async function runFitSuite(corpusPath: string): Promise<FitCase[]> {
+  const { POST } = await import("../app/api/analyze/route");
+  const resume = readFileSync(join(ROOT, "sampleresume.tex"), "utf8");
+  const jds = loadCorpus(corpusPath);
+  const cases: FitCase[] = [];
+
+  for (const [i, jd] of jds.entries()) {
+    const started = Date.now();
+    process.stderr.write(
+      `  [${i + 1}/${jds.length}] ${jd.stratum.padEnd(8)} ${(jd.title ?? "").slice(0, 42).padEnd(42)} `,
+    );
+    try {
+      const res = await POST(
+        new Request("http://localhost/api/analyze", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            resume,
+            jobDescription: jd.description,
+          }),
+        }) as never,
+      );
+      const body = (await res.json()) as {
+        analysis?: Analysis;
+        error?: string;
+      };
+      if (!body.analysis) throw new Error(body.error ?? `HTTP ${res.status}`);
+      const c = toCase(jd, body.analysis, Date.now() - started);
+      process.stderr.write(`${c.domainMatch} (${c.score})\n`);
+      cases.push(c);
+    } catch (e) {
+      process.stderr.write("FAILED\n");
+      cases.push({
+        id: jd.id,
+        stratum: jd.stratum,
+        title: jd.title ?? "",
+        ok: false,
+        ms: Date.now() - started,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+  return cases;
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
@@ -541,6 +596,19 @@ async function main() {
   const fixtures = loadFixtures(args.only);
   console.error(`Backend: ${label}`);
   console.error(`Fixtures: ${fixtures.length}\n`);
+
+  if (args.suite === "fit") {
+    const corpus = args.corpus ?? join(ROOT, "evals/corpus/real-jds.json");
+    const cases = await runFitSuite(corpus);
+    console.error("");
+    console.log(fitReport(cases, label));
+    if (args.json) {
+      writeFileSync(args.json, JSON.stringify(cases, null, 2));
+      console.error(`\nRaw results written to ${args.json}`);
+    }
+    process.exitCode = cases.some((c) => !c.ok) ? 1 : 0;
+    return;
+  }
 
   if (args.suite === "generation") {
     const gen = await runGenerationSuite(fixtures, label, args.template);

@@ -142,6 +142,32 @@ Note that `navigator.clipboard` is unavailable on plain-HTTP origins in some mob
 
 Expect a full tailor run to take a few minutes on a local model: it is several sequential model passes, not one.
 
+## The fit check
+
+Before it writes anything, the analyzer decides whether you belong in the role
+at all — and says so.
+
+A score alone cannot carry that. It conflates "weak but plausible" with "you are
+a computer science student applying to a human resources role", and the app
+previously acted on neither: the number only tinted a pill, and the résumé got
+built regardless. The analyzer now returns a structured verdict:
+
+| Field             | What it answers                                           |
+| ----------------- | --------------------------------------------------------- |
+| `domain_match`    | `direct` / `adjacent` / `unrelated` — is this your field? |
+| `seniority_match` | `at` / `below` / `above`                                  |
+| `transferable`    | Named, specific things that genuinely carry across a gap  |
+| `disqualifying`   | Requirements no rewrite can satisfy — a licence, a degree |
+
+On an out-of-field role you get told plainly, before the build step, what
+transfers and what does not. **It never blocks.** Profiles under-describe
+people, career changers exist, and the analyzer is not infallible — so it
+informs the decision instead of making it. The generator also sees the verdict,
+and on a weak match leads with transferable evidence rather than imitating the
+vocabulary of a field you have not worked in.
+
+Measured against real job postings — see _Fit against real jobs_ below.
+
 ## The ATS check
 
 Most advice about LaTeX and ATS is folklore. This app measures instead: it
@@ -276,6 +302,15 @@ Measured with this harness (10 fixtures, same machine, `OLLAMA_THINK=low` for gp
 On the `cicd-implicit` case specifically, `gpt-oss:20b` scored 100% recall on `present` against Qwen3-Coder's 40% — the same distinction the anecdote above describes, now reproducible. Qwen also claimed TypeScript, GraphQL and Redis on a résumé containing none of them.
 
 Model output is not deterministic even at low temperature; expect a few points of movement between runs. Look for consistent, large gaps rather than reading single-run differences.
+
+### Fine-tuning
+
+Deferred deliberately, with the reasoning and a ready-to-run plan in
+[`docs/finetuning.md`](docs/finetuning.md). Briefly: schema adherence is already
+guaranteed by grammar-constrained decoding, the base model has not plateaued on
+the harness above, and the one measured defect (page fill) is a prompting
+problem. The plan is written so it can be executed the moment the evidence
+justifies it.
 
 ## Limitations
 
