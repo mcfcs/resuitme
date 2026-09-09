@@ -236,6 +236,32 @@ npm run eval -- --model gpt-oss:20b --json a.json
 npm run eval -- --model qwen3:32b   --json b.json
 ```
 
+### Generation quality (measured)
+
+`npm run eval -- --suite generation` builds a résumé per fixture through the
+real pipeline and scores the output. Baseline on `gpt-oss:20b`, 10 fixtures:
+
+| Metric                  | Result                                |
+| ----------------------- | ------------------------------------- |
+| ATS score               | **100** mean                          |
+| One-page                | **10/10**                             |
+| `must_include` coverage | **98%**                               |
+| Honesty violations      | 1 across 10 cases                     |
+| Placeholder leaks       | 0                                     |
+| Trim passes             | 1.0 mean (no case needed re-trimming) |
+| Time per case           | ~25s                                  |
+
+Two open issues this surfaced, recorded here rather than papered over:
+
+- **The page is often underfilled.** Output averages ~62% of the available
+  character budget, ranging from 30% to 91%. The one-page constraint is
+  satisfied, but on several cases the model stops well short of a full page
+  and leaves real experience unused — the opposite of the failure the trim
+  loop was built for. Worth attacking next; the eval now makes it visible.
+- **One honesty violation** (`adjacent-not-equal` surfaced "azure data
+  services", which the candidate does not have). One breach in ten is one too
+  many for a hard constraint, and the suite exits non-zero on it.
+
 `--model` overrides `OLLAMA_MODEL` (or `ANTHROPIC_MODEL`) for a single run, so two models can be compared without editing `.env.local`. Comparing across model _families_ usually also needs `--think off`, because `OLLAMA_THINK` stays set from your env and a non-reasoning model rejects the `think` field with HTTP 400. (`--think off` unsets the variable; it never sends `think: false` — see the gpt-oss warning above.)
 
 The metric that matters is **recall on `present`**. The app turns analyzer-flagged `missing` keywords into hard "never mention this" constraints, so a keyword wrongly filed under `missing` suppresses real experience from your tailored résumé. The `cicd-implicit` fixture exists to catch exactly that: its résumé describes a GitHub Actions build/test/deploy pipeline without ever using the string "CI/CD".
