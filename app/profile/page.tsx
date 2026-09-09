@@ -7,7 +7,8 @@
 // components/profile/.
 
 import { useRef } from "react";
-import SiteNav from "@/components/SiteNav";
+import PageShell from "@/components/PageShell";
+import { Notice } from "@/components/Sheet";
 import DocumentBlock from "@/components/profile/DocumentBlock";
 import AddToCvPanel from "@/components/profile/AddToCvPanel";
 import ParsedProfileView from "@/components/profile/ParsedProfileView";
@@ -42,88 +43,69 @@ export default function ProfilePage() {
 
   if (!hydrated) {
     return (
-      <main className="mx-auto min-h-screen max-w-5xl px-4 py-10 px-safe pb-tabbar sm:px-6">
-        <div className="text-sm text-paper/40">Loading…</div>
-      </main>
+      <div className="min-h-screen px-4 py-10 px-safe sm:px-6">
+        <p className="text-sm text-paper/50">Loading your profile…</p>
+      </div>
     );
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-4 py-6 px-safe pb-tabbar sm:px-6 md:py-12">
-      <SiteNav
-        trailing={
-          <>
-            {profile.updatedAt && (
-              <span className="hidden text-xs tabular-nums text-paper/40 lg:inline">
-                Last saved {new Date(profile.updatedAt).toLocaleString()}
-              </span>
-            )}
-            <button
-              onClick={exportProfile}
-              disabled={!hasAnyInput && !profile.parsed}
-              className="shrink-0 text-xs text-paper/50 transition hover:text-marigold disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Export profile
-            </button>
-            <button
-              onClick={() => importRef.current?.click()}
-              className="shrink-0 text-xs text-paper/50 transition hover:text-marigold"
-            >
-              Import
-            </button>
-            <input
-              ref={importRef}
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              onChange={(e) => {
-                void importProfile(e.target.files?.[0] ?? null);
-                // Reset so re-picking the same file fires change again.
-                e.target.value = "";
-              }}
-            />
-            <button
-              onClick={reset}
-              className="shrink-0 text-xs text-paper/50 transition hover:text-red-300"
-            >
-              Clear profile
-            </button>
-          </>
-        }
-      />
-
-      <header className="mb-10 max-w-3xl md:mb-14">
-        <div
-          className="eyebrow mb-4 animate-rise-in text-marigold md:mb-5"
-          style={{ animationDelay: "60ms" }}
-        >
-          Your source of truth
-        </div>
-        <h1
-          className="animate-rise-in font-display text-4xl font-medium leading-[1.02] tracking-tight sm:text-5xl md:text-6xl md:leading-[0.95]"
-          style={{ animationDelay: "120ms" }}
-        >
-          Your <span className="italic text-marigold">profile</span>
-        </h1>
-        <p
-          className="mt-5 max-w-xl animate-rise-in text-base leading-relaxed text-paper/65 md:mt-6 md:text-lg"
-          style={{ animationDelay: "220ms" }}
-        >
-          Paste your base résumé, base CV, and any extra skills. Resuitme merges
-          them into one unified profile — deduplicating shared entries and
-          combining bullets where the résumé and CV overlap.
-        </p>
-        {profile.updatedAt && (
-          <p className="mt-3 text-xs tabular-nums text-paper/40 lg:hidden">
-            Last saved {new Date(profile.updatedAt).toLocaleString()}
-          </p>
-        )}
-      </header>
-
+    <PageShell
+      title="Everything you have, in one place"
+      intro={
+        <>
+          Paste your base résumé, a fuller CV, and any loose notes. Resuitme
+          merges them into one profile — deduplicating what overlaps and keeping
+          the more complete version of each entry.
+        </>
+      }
+      nav={
+        <>
+          {profile.updatedAt && (
+            <span className="hidden text-xs tabular-nums text-paper/40 lg:inline">
+              Last saved {new Date(profile.updatedAt).toLocaleString()}
+            </span>
+          )}
+          <button
+            onClick={exportProfile}
+            disabled={!hasAnyInput && !profile.parsed}
+            className="shrink-0 text-sm text-paper/55 transition-colors hover:text-paper disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Export profile
+          </button>
+          <button
+            onClick={() => importRef.current?.click()}
+            className="shrink-0 text-sm text-paper/55 transition-colors hover:text-paper"
+          >
+            Import
+          </button>
+          <input
+            ref={importRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              void importProfile(e.target.files?.[0] ?? null);
+              // Reset so re-picking the same file fires change again.
+              e.target.value = "";
+            }}
+          />
+          <button
+            onClick={reset}
+            className="shrink-0 text-sm text-paper/55 transition-colors hover:text-rust"
+          >
+            Clear profile
+          </button>
+        </>
+      }
+    >
       {error && (
-        <div className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-          <strong className="font-semibold">Error:</strong> {error}
-        </div>
+        <Notice tone="bad">
+          <strong className="font-medium text-type-strong">
+            Something went wrong.
+          </strong>{" "}
+          {error}
+        </Notice>
       )}
 
       <DocumentBlock
@@ -142,11 +124,11 @@ export default function ProfilePage() {
         onFile={(f) => handleFile("cv", f)}
       />
 
-      <section className="mb-10 md:mb-12">
+      <section>
         <h2 className="mb-1.5 font-display text-xl font-medium sm:text-2xl">
           Additional skills &amp; notes
         </h2>
-        <p className="mb-4 max-w-2xl text-sm leading-relaxed text-paper/60">
+        <p className="mb-4 max-w-2xl text-sm leading-relaxed text-type-muted">
           Anything you have that isn&apos;t on your résumé or CV. Tools,
           languages, projects, in-progress certifications. Free form. Merged in
           and tagged as &quot;notes&quot;.
@@ -159,19 +141,18 @@ export default function ProfilePage() {
 - AWS Solutions Architect Associate (studying for the exam, no cert yet)
 - Currently learning Kubernetes
 - Conversational Spanish`}
-          className="w-full text-sm bg-ink-raised/60 border border-paper/10 rounded-md px-4 py-3 h-40 resize-y focus:outline-none focus:border-marigold/60 focus:ring-1 focus:ring-marigold/30 transition-colors placeholder:text-paper/25"
+          className="w-full text-sm bg-stock-shade/50 border border-type-strong/12 px-4 py-3 h-40 resize-y focus-visible:outline-none focus-visible:border-marigold focus-visible:ring-1 focus-visible:ring-marigold/40 transition-colors placeholder:text-type-faint"
         />
       </section>
 
       {/* AI-assisted CV addition */}
-      <section className="mb-10 md:mb-12">
+      <section>
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div>
-            <div className="eyebrow mb-2 text-marigold">AI-assisted</div>
             <h2 className="font-display text-xl font-medium sm:text-2xl">
               Add to CV with AI
             </h2>
-            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-paper/60">
+            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-type-muted">
               Describe a new experience, project, or other entry. The model
               polishes your input into clean CV-quality content, you review, and
               on confirm it&apos;s inserted into your base CV LaTeX. Your résumé
@@ -181,7 +162,7 @@ export default function ProfilePage() {
         </div>
 
         {!profile.baseCvLatex?.trim() ? (
-          <div className="rounded-md border border-paper/10 bg-ink-raised/40 p-4 text-sm text-paper/60">
+          <div className="border border-type-strong/12 bg-stock-shade/40 p-4 text-sm text-type-muted">
             Paste a base CV above first — this feature inserts entries into your
             existing CV LaTeX, matching its formatting and macros.
           </div>
@@ -204,11 +185,11 @@ export default function ProfilePage() {
 
       {/* Sticky action bar. On mobile it must clear the fixed tab bar, so it
           sits ~4.75rem above the bottom edge instead of the desktop 1rem. */}
-      <div className="sticky bottom-[4.75rem] z-10 flex flex-wrap items-center gap-2 rounded-md border border-paper/10 bg-ink/90 px-3 py-3 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.8)] backdrop-blur-md sm:gap-3 sm:px-4 md:bottom-4">
+      <div className="sticky bottom-[5.25rem] z-10 -mx-5 flex flex-wrap items-center gap-2 border-y border-type-strong/15 bg-stock/95 px-5 py-3 shadow-[0_-2px_18px_-6px_rgba(0,0,0,0.25)] backdrop-blur-md sm:-mx-8 sm:gap-3 sm:px-8 md:bottom-4 lg:-mx-12 lg:px-12">
         <button
           onClick={build}
           disabled={busy !== null || !hasAnyInput}
-          className="flex-1 rounded-md bg-marigold px-6 py-2.5 text-sm font-semibold text-ink shadow-[0_2px_18px_-6px_rgba(232,168,56,0.6)] transition hover:bg-marigold-deep disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
+          className="flex-1 bg-type-strong px-6 py-2.5 text-sm font-medium text-stock transition-colors hover:bg-marigold-deep disabled:cursor-not-allowed disabled:bg-type-muted disabled:text-stock sm:flex-none"
         >
           {busy === "build"
             ? "Merging…"
@@ -219,16 +200,16 @@ export default function ProfilePage() {
         <button
           onClick={saveInputsOnly}
           disabled={busy !== null}
-          className="flex-1 rounded-md border border-paper/15 px-5 py-2.5 text-sm text-paper/80 transition hover:border-paper/30 hover:bg-paper/5 disabled:opacity-40 sm:flex-none"
+          className="flex-1 border border-type-strong/20 px-5 py-2.5 text-sm text-type-body transition hover:border-type-strong/35 hover:bg-stock-shade/70 disabled:opacity-40 sm:flex-none"
         >
           Save inputs only
         </button>
         {saved && (
-          <span className="w-full text-xs text-sage-300 sm:w-auto">
+          <span className="w-full text-xs text-sage-ink sm:w-auto">
             Saved to this browser.
           </span>
         )}
-        <span className="ml-auto hidden font-display text-xs italic text-paper/40 md:block">
+        <span className="ml-auto hidden text-xs text-type-muted md:block">
           Profile lives in your browser&apos;s localStorage.
         </span>
       </div>
@@ -241,7 +222,7 @@ export default function ProfilePage() {
             <h2 className="font-display text-2xl font-medium sm:text-3xl">
               Merged profile
             </h2>
-            <div className="flex items-center gap-2 text-xs text-paper/60">
+            <div className="flex items-center gap-2 text-xs text-type-muted">
               <span className="eyebrow text-paper/45">Built from</span>
               {builtSources.map((s) => (
                 <SourceBadge key={s} source={s} />
@@ -251,6 +232,6 @@ export default function ProfilePage() {
           <ParsedProfileView parsed={profile.parsed} />
         </section>
       )}
-    </main>
+    </PageShell>
   );
 }

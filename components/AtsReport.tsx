@@ -16,12 +16,12 @@ import type { AtsFinding } from "@/lib/ats/source-lint";
 export function AtsScorePill({ score }: { score: number }) {
   const color =
     score >= 90
-      ? "bg-sage-500/15 text-sage-300 border-sage-500/40"
+      ? "bg-sage-ink/12 text-sage-ink border-sage-ink/40"
       : score >= 75
         ? "bg-marigold/15 text-marigold border-marigold/40"
         : score >= 50
-          ? "bg-orange-500/15 text-orange-200 border-orange-500/40"
-          : "bg-red-500/15 text-red-200 border-red-500/40";
+          ? "bg-orange-500/15 text-rust border-rust/40"
+          : "bg-rust/15 text-rust border-rust/40";
   return (
     <span
       className={`inline-flex items-baseline gap-0.5 rounded-full border px-3 py-1 font-mono text-sm font-medium tabular-nums ${color}`}
@@ -50,19 +50,19 @@ function CheckRow({
       <span
         aria-hidden
         className={`mt-0.5 select-none font-mono text-xs ${
-          passed ? "text-sage-300" : "text-orange-300"
+          passed ? "text-sage-ink" : "text-rust"
         }`}
       >
         {passed ? "✓" : "✕"}
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-          <span className="text-sm text-paper/85">{label}</span>
-          <span className="font-mono text-xs tabular-nums text-paper/40">
+          <span className="text-sm text-type-strong">{label}</span>
+          <span className="font-mono text-xs tabular-nums text-type-faint">
             {points}/{weight}
           </span>
         </span>
-        <span className="mt-0.5 block text-xs leading-relaxed text-paper/55">
+        <span className="mt-0.5 block text-xs leading-relaxed text-type-muted">
           {detail}
         </span>
       </span>
@@ -71,9 +71,9 @@ function CheckRow({
 }
 
 const SEVERITY_STYLE: Record<AtsFinding["severity"], string> = {
-  critical: "text-red-200",
-  warning: "text-orange-200",
-  info: "text-paper/60",
+  critical: "text-rust",
+  warning: "text-rust",
+  info: "text-type-muted",
 };
 
 export default function AtsReport({
@@ -88,15 +88,14 @@ export default function AtsReport({
   accent?: Accent;
 }) {
   const [showText, setShowText] = useState(false);
-  const rule = accent === "sage" ? "border-sage-500/50" : "border-marigold/50";
+  const rule = accent === "sage" ? "border-sage-ink/50" : "border-marigold/50";
 
   if (!scan && findings.length === 0) return null;
 
   return (
-    <section className="space-y-4 rounded-md border border-paper/10 bg-ink-raised/40 p-4 sm:p-6">
+    <section className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="eyebrow mb-1 text-paper/45">ATS check</div>
           <h3 className="font-display text-lg font-medium sm:text-xl">
             What a résumé parser reads
           </h3>
@@ -106,7 +105,7 @@ export default function AtsReport({
 
       {scan ? (
         <>
-          <ul className="divide-y divide-paper/5">
+          <ul className="divide-y divide-type-strong/10">
             {scan.checks.map((c) => (
               <CheckRow
                 key={c.id}
@@ -122,19 +121,19 @@ export default function AtsReport({
           <div>
             <button
               onClick={() => setShowText((v) => !v)}
-              className="text-xs text-paper/50 underline underline-offset-4 transition hover:text-paper/80"
+              className="text-xs text-type-muted underline underline-offset-4 transition hover:text-type-strong"
             >
               {showText ? "Hide" : "Show"} the text a parser extracts
             </button>
             {showText && (
-              <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded border border-paper/10 bg-ink/60 p-3 font-mono text-[11px] leading-relaxed text-paper/70">
+              <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words border border-type-strong/12 bg-stock-shade/55 p-3 font-mono text-[11px] leading-relaxed text-type-body">
                 {scan.text}
               </pre>
             )}
           </div>
         </>
       ) : (
-        <p className="text-sm text-paper/60">
+        <p className="text-sm text-type-muted">
           Couldn&apos;t compile and scan the PDF, so this is a source-level
           check only.
         </p>
@@ -142,7 +141,7 @@ export default function AtsReport({
 
       {findings.length > 0 && (
         <div className={`border-l-2 pl-4 ${rule}`}>
-          <div className="eyebrow mb-2 text-paper/45">
+          <div className="mb-2 text-sm font-medium text-type-strong">
             Source findings ({findings.length})
           </div>
           <ul className="space-y-3">
@@ -151,12 +150,12 @@ export default function AtsReport({
                 <span className={`font-medium ${SEVERITY_STYLE[f.severity]}`}>
                   {f.title}
                 </span>
-                <p className="mt-0.5 text-xs leading-relaxed text-paper/55">
+                <p className="mt-0.5 text-xs leading-relaxed text-type-muted">
                   {f.detail}
                 </p>
                 {f.fix && (
-                  <p className="mt-1 text-xs leading-relaxed text-paper/70">
-                    <span className="text-paper/45">Fix: </span>
+                  <p className="mt-1 text-xs leading-relaxed text-type-body">
+                    <span className="text-type-faint">Fix: </span>
                     {f.fix}
                   </p>
                 )}

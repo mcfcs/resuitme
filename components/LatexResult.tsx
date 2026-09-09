@@ -95,7 +95,7 @@ export default function LatexResult({
 
   const cta =
     accent === "sage"
-      ? "bg-sage-500 hover:bg-sage-400"
+      ? "bg-sage-ink hover:bg-sage-ink"
       : "bg-marigold hover:bg-marigold-deep";
 
   return (
@@ -111,19 +111,19 @@ export default function LatexResult({
         <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
           <button
             onClick={copyLatex}
-            className="min-h-[2.75rem] rounded-md border border-paper/15 px-3 text-xs transition hover:border-paper/30 hover:bg-paper/5 sm:min-h-0 sm:py-1.5"
+            className="min-h-[2.75rem] border border-type-strong/20 px-3 text-xs transition hover:border-type-strong/35 hover:bg-stock-shade/60 sm:min-h-0 sm:py-1.5"
           >
             {copied ? "Copied ✓" : "Copy"}
           </button>
           <button
             onClick={downloadLatex}
-            className="min-h-[2.75rem] rounded-md border border-paper/15 px-3 text-xs transition hover:border-paper/30 hover:bg-paper/5 sm:min-h-0 sm:py-1.5"
+            className="min-h-[2.75rem] border border-type-strong/20 px-3 text-xs transition hover:border-type-strong/35 hover:bg-stock-shade/60 sm:min-h-0 sm:py-1.5"
           >
             Download .tex
           </button>
           <button
             onClick={openInOverleaf}
-            className={`min-h-[2.75rem] rounded-md px-3 text-xs font-semibold text-ink transition sm:min-h-0 sm:py-1.5 ${cta}`}
+            className={`min-h-[2.75rem] px-3 text-xs font-semibold text-stock transition sm:min-h-0 sm:py-1.5 ${cta}`}
             title="Opens overleaf.com in a new tab with your LaTeX pre-loaded for an instant PDF preview."
           >
             Overleaf ↗
@@ -131,11 +131,11 @@ export default function LatexResult({
         </div>
       </div>
 
-      <pre className="max-h-[55vh] overflow-auto whitespace-pre-wrap break-words rounded-md border border-paper/10 bg-ink-raised/60 p-3 font-mono text-xs leading-relaxed sm:max-h-[600px] sm:p-5">
+      <pre className="max-h-[55vh] overflow-auto whitespace-pre-wrap break-words border border-type-strong/15 bg-stock-shade/50 p-3 font-mono text-xs leading-relaxed sm:max-h-[600px] sm:p-5">
         {latex}
       </pre>
 
-      <p className="mt-2.5 text-xs text-paper/40">{hint}</p>
+      <p className="mt-2.5 text-xs text-type-faint">{hint}</p>
 
       {(ats || atsFindings.length > 0) && (
         <div className="mt-5">
@@ -146,17 +146,17 @@ export default function LatexResult({
       {budgetInfo &&
         budgetInfo.iterations > 1 &&
         budgetInfo.cutsApplied.length > 0 && (
-          <details className="mt-4 rounded-md border border-paper/10 bg-ink-raised/30 p-4 text-sm">
-            <summary className="cursor-pointer select-none text-paper/70">
-              <span className="font-display italic text-paper/85">
+          <details className="mt-4 border border-type-strong/12 bg-stock-shade/30 p-4 text-sm">
+            <summary className="cursor-pointer select-none text-type-body">
+              <span className="font-display italic text-type-strong">
                 Trimmed to fit one page
               </span>
-              <span className="ml-2 text-xs text-paper/40">
+              <span className="ml-2 text-xs text-type-faint">
                 ({budgetInfo.cutsApplied.length}{" "}
                 {budgetInfo.cutsApplied.length === 1 ? "cut" : "cuts"} applied)
               </span>
             </summary>
-            <ul className="mt-3 list-outside list-disc space-y-1.5 pl-5 text-paper/70">
+            <ul className="mt-3 list-outside list-disc space-y-1.5 pl-5 text-type-body">
               {budgetInfo.cutsApplied.map((c, i) => (
                 <li key={i}>{c}</li>
               ))}
@@ -173,8 +173,8 @@ export function BudgetBadge({ info }: { info: BudgetInfo }) {
   // Real page count is authoritative when present; char budget is the fallback.
   const measured = info.pages !== null;
   const tone = info.fits
-    ? "border-sage-500/40 bg-sage-500/10 text-sage-300"
-    : "border-red-500/50 bg-red-500/15 text-red-200";
+    ? "border-sage-ink/40 bg-sage-ink/10 text-sage-ink"
+    : "border-rust/50 bg-rust/15 text-rust";
   const icon = info.fits ? "✓" : "⚠";
   const verdict = measured
     ? info.fits

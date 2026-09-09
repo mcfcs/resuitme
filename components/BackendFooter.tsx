@@ -43,8 +43,8 @@ export default function BackendFooter({ label }: { label?: string }) {
         : `Your résumé and job description are sent to Anthropic (${health.model}) for analysis and rewriting.`;
 
   return (
-    <footer className="mt-16 flex flex-col justify-between gap-3 border-t border-paper/10 pt-8 text-xs text-paper/40 md:mt-20 md:flex-row md:items-center">
-      <span className="font-display text-sm italic text-paper/55">
+    <footer className="mt-6 flex flex-col justify-between gap-3 pb-8 text-xs text-paper/40 md:flex-row md:items-center">
+      <span className="font-display text-sm text-paper/55">
         {label ?? "Resuitme"}
       </span>
       <span className="max-w-xl leading-relaxed md:text-right">
@@ -54,7 +54,7 @@ export default function BackendFooter({ label }: { label?: string }) {
         {health && !health.ok && (
           <>
             {" "}
-            <span className="text-orange-300">
+            <span className="text-rust">
               Model backend unavailable — {health.detail}
             </span>
           </>

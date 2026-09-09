@@ -31,9 +31,9 @@ export default function FitVerdictNotice({
   const severe = unrelated || hasBlockers;
 
   const tone = severe
-    ? "border-orange-500/40 bg-orange-500/[0.06]"
-    : "border-paper/12 bg-ink-raised/40";
-  const rule = accent === "sage" ? "border-sage-500/50" : "border-marigold/50";
+    ? "border-rust/40 bg-rust/[0.06]"
+    : "border-type-strong/15 bg-stock-shade/40";
+  const rule = accent === "sage" ? "border-sage-ink/50" : "border-marigold/50";
 
   const headline = unrelated
     ? "This role is in a different field"
@@ -42,12 +42,12 @@ export default function FitVerdictNotice({
       : "Adjacent field — worth framing carefully";
 
   return (
-    <section className={`rounded-md border p-4 sm:p-5 ${tone}`}>
+    <section className={`border p-4 sm:p-5 ${tone}`}>
       <h3 className="font-display text-lg font-medium sm:text-xl">
         {headline}
       </h3>
 
-      <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-paper/70">
+      <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-type-body">
         {unrelated
           ? "A résumé can present your experience well, but it cannot make you a candidate in a field you have not worked in. You can still apply — just go in knowing that."
           : hasBlockers
@@ -57,13 +57,13 @@ export default function FitVerdictNotice({
 
       {fit.disqualifying.length > 0 && (
         <div className="mt-4">
-          <p className="text-sm font-medium text-orange-200">
+          <p className="text-sm font-medium text-rust">
             Requirements you don&apos;t currently meet
           </p>
-          <ul className="mt-1.5 space-y-1 text-sm text-paper/70">
+          <ul className="mt-1.5 space-y-1 text-sm text-type-body">
             {fit.disqualifying.map((d) => (
               <li key={d} className="flex gap-2">
-                <span aria-hidden className="text-orange-300/70">
+                <span aria-hidden className="text-rust/70">
                   —
                 </span>
                 <span>{d}</span>
@@ -75,15 +75,15 @@ export default function FitVerdictNotice({
 
       {fit.transferable.length > 0 && (
         <div className={`mt-4 border-l-2 pl-4 ${rule}`}>
-          <p className="text-sm font-medium text-paper/85">
+          <p className="text-sm font-medium text-type-strong">
             What does carry over
           </p>
-          <ul className="mt-1.5 space-y-1 text-sm text-paper/70">
+          <ul className="mt-1.5 space-y-1 text-sm text-type-body">
             {fit.transferable.map((t) => (
               <li key={t}>{t}</li>
             ))}
           </ul>
-          <p className="mt-2.5 text-xs leading-relaxed text-paper/50">
+          <p className="mt-2.5 text-xs leading-relaxed text-type-muted">
             The résumé will lead with these rather than imitating the vocabulary
             of a field you haven&apos;t worked in.
           </p>
@@ -91,7 +91,7 @@ export default function FitVerdictNotice({
       )}
 
       {fit.seniority_match === "below" && (
-        <p className="mt-4 text-sm text-paper/60">
+        <p className="mt-4 text-sm text-type-muted">
           The role also asks for more experience than your profile shows.
         </p>
       )}

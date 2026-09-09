@@ -37,15 +37,12 @@ export default function TemplateCard({
 
   if (!hasProfileContent) {
     return (
-      <div className="flex flex-wrap items-start justify-between gap-4 rounded-md border border-orange-500/30 bg-orange-500/[0.04] p-4 sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4 border border-rust/30 bg-rust/[0.05] p-4 sm:p-5">
         <div className="min-w-0 flex-1">
-          <div className="eyebrow mb-1.5 text-orange-300">
-            00 — No content pool
-          </div>
-          <div className="font-display text-base text-orange-100">
+          <div className="font-display text-base text-rust">
             Build a profile to use Build mode.
           </div>
-          <div className="mt-1.5 max-w-prose text-xs leading-relaxed text-paper/55">
+          <div className="mt-1.5 max-w-prose text-xs leading-relaxed text-type-muted">
             Build mode composes a résumé entirely from your profile — parsed
             entries, CV, and skill notes. Add anything to your profile to unlock
             this mode.
@@ -53,23 +50,20 @@ export default function TemplateCard({
         </div>
         <Link
           href="/profile"
-          className="shrink-0 border-b border-orange-300/30 pb-0.5 text-xs text-orange-200 hover:border-orange-200 hover:text-orange-100"
+          className="shrink-0 border-b border-rust/30 pb-0.5 text-xs text-rust hover:border-rust hover:text-rust"
         >
-          Set up profile →
+          Set up profile
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="rounded-md border border-sage-500/25 bg-sage-500/[0.04] p-4 sm:p-5">
+    <div className="border border-sage-ink/25 bg-sage-ink/[0.05] p-4 sm:p-5">
       <TemplatePicker selected={templateId} onSelect={onSelectTemplate} />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <div className="eyebrow mb-1.5 text-sage-400">
-            00 — Template &amp; content pool
-          </div>
-          <div className="font-display text-base text-paper/90">
+          <div className="font-display text-base text-type-strong">
             {usingBuiltin ? (
               <>
                 Using the built-in{" "}
@@ -79,13 +73,13 @@ export default function TemplateCard({
               <>Using your saved base résumé as the LaTeX template.</>
             )}
           </div>
-          <div className="mt-1.5 max-w-prose text-xs leading-relaxed text-paper/55">
+          <div className="mt-1.5 max-w-prose text-xs leading-relaxed text-type-muted">
             {usingBuiltin ? (
               <>
                 {templateDescription}{" "}
                 <Link
                   href="/profile"
-                  className="text-sage-300 underline underline-offset-2 hover:text-sage-200"
+                  className="text-sage-ink underline underline-offset-2 hover:text-sage-ink"
                 >
                   Save your own résumé LaTeX
                 </Link>{" "}
@@ -97,15 +91,15 @@ export default function TemplateCard({
             {hasParsed ? (
               <>
                 Content pool —{" "}
-                <span className="tabular-nums text-paper/80">
+                <span className="tabular-nums text-type-strong">
                   {counts!.exp}
                 </span>{" "}
                 experiences,{" "}
-                <span className="tabular-nums text-paper/80">
+                <span className="tabular-nums text-type-strong">
                   {counts!.proj}
                 </span>{" "}
                 projects,{" "}
-                <span className="tabular-nums text-paper/80">
+                <span className="tabular-nums text-type-strong">
                   {counts!.skills}
                 </span>{" "}
                 skills available.
@@ -119,9 +113,9 @@ export default function TemplateCard({
         </div>
         <Link
           href="/profile"
-          className="shrink-0 border-b border-sage-500/30 pb-0.5 text-xs text-sage-300 hover:border-sage-400 hover:text-sage-200"
+          className="shrink-0 border-b border-sage-ink/30 pb-0.5 text-xs text-sage-ink hover:border-sage-ink hover:text-sage-ink"
         >
-          Edit profile →
+          Edit profile
         </Link>
       </div>
     </div>
@@ -144,8 +138,8 @@ function TemplatePicker({
   if (options.length < 2) return null;
 
   return (
-    <div className="mb-4 border-b border-sage-500/15 pb-4">
-      <div className="eyebrow mb-2 text-sage-400">Layout</div>
+    <div className="mb-4 border-b border-sage-ink/20 pb-4">
+      <div className="mb-2 text-sm font-medium text-type-strong">Layout</div>
       <div className="flex flex-wrap gap-2">
         {options.map((t) => {
           const active = t.id === selected;
@@ -157,8 +151,8 @@ function TemplatePicker({
               title={t.description}
               className={
                 active
-                  ? "rounded-md border border-sage-500/60 bg-sage-500/15 px-3 py-1.5 text-xs text-sage-200 transition"
-                  : "rounded-md border border-paper/12 px-3 py-1.5 text-xs text-paper/60 transition hover:border-paper/25 hover:bg-paper/5"
+                  ? "border border-sage-ink/60 bg-sage-ink/12 px-3 py-1.5 text-xs text-sage-ink transition"
+                  : "border border-type-strong/15 px-3 py-1.5 text-xs text-type-muted transition hover:border-paper/25 hover:bg-stock-shade/60"
               }
             >
               {t.name}

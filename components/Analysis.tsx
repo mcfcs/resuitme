@@ -11,12 +11,12 @@ import type { Accent, Analysis, MustIncludePick } from "@/lib/types";
 export function ScorePill({ score }: { score: number }) {
   const color =
     score >= 80
-      ? "bg-sage-500/15 text-sage-300 border-sage-500/40"
+      ? "bg-sage-ink/12 text-sage-ink border-sage-ink/40"
       : score >= 60
         ? "bg-marigold/15 text-marigold border-marigold/40"
         : score >= 40
-          ? "bg-orange-500/15 text-orange-200 border-orange-500/40"
-          : "bg-red-500/15 text-red-200 border-red-500/40";
+          ? "bg-orange-500/15 text-rust border-rust/40"
+          : "bg-rust/15 text-rust border-rust/40";
   return (
     <span
       className={`inline-flex items-baseline gap-0.5 rounded-full border px-3 py-1 font-mono text-sm font-medium tabular-nums ${color}`}
@@ -34,11 +34,11 @@ export function AnalysisCard({
   analysis: Analysis;
   accent?: Accent;
 }) {
-  const rule = accent === "sage" ? "border-sage-500/50" : "border-marigold/50";
+  const rule = accent === "sage" ? "border-sage-ink/50" : "border-marigold/50";
   return (
-    <div className="space-y-6 rounded-md border border-paper/10 bg-ink-raised/40 p-4 sm:p-6">
+    <div className="space-y-6">
       <p
-        className={`border-l-2 pl-4 font-display text-lg italic leading-snug text-paper/90 sm:text-xl md:text-2xl ${rule}`}
+        className={`border-l-2 pl-4 font-display text-lg italic leading-snug text-type-strong sm:text-xl md:text-2xl ${rule}`}
       >
         “{analysis.verdict}”
       </p>
@@ -84,16 +84,16 @@ function MustIncludeBlock({
 }) {
   const box =
     accent === "sage"
-      ? "border-sage-500/30 bg-sage-500/[0.05]"
-      : "border-marigold/30 bg-marigold/[0.05]";
-  const eyebrow = accent === "sage" ? "text-sage-400" : "text-marigold";
+      ? "border-sage-ink/30 bg-sage-ink/[0.06]"
+      : "border-marigold/30 bg-marigold/[0.07]";
+  const rank = accent === "sage" ? "text-sage-ink" : "text-marigold";
   return (
-    <div className={`rounded-md border p-4 sm:p-5 ${box}`}>
+    <div className={`border p-4 sm:p-5 ${box}`}>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-display text-base text-paper/95 sm:text-lg">
+        <h3 className="font-display text-base text-type-strong sm:text-lg">
           Top picks for this résumé
         </h3>
-        <span className={`eyebrow ${eyebrow}`}>
+        <span className={`text-sm font-medium tabular-nums ${rank}`}>
           {picks.length} highest-impact items
         </span>
       </div>
@@ -101,14 +101,16 @@ function MustIncludeBlock({
         {picks.map((p, i) => (
           <li
             key={i}
-            className="flex items-start gap-3 rounded border border-paper/5 bg-ink/30 px-3 py-3 sm:px-3.5"
+            className="flex items-start gap-3 border border-type-strong/8 bg-stock-shade/35 px-3 py-3 sm:px-3.5"
           >
-            <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-paper/40">
+            <span className="mt-0.5 shrink-0 font-mono text-xs tabular-nums text-type-faint">
               {String(i + 1).padStart(2, "0")}
             </span>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-paper/95">{p.item}</div>
-              <p className="mt-1 text-sm leading-relaxed text-paper/65">
+              <div className="text-sm font-medium text-type-strong">
+                {p.item}
+              </div>
+              <p className="mt-1 text-sm leading-relaxed text-type-muted">
                 {p.reason}
               </p>
             </div>
@@ -130,14 +132,14 @@ function Block({
 }) {
   const dot =
     tone === "positive"
-      ? "bg-sage-400"
+      ? "bg-sage-ink"
       : tone === "negative"
         ? "bg-red-400"
         : "bg-paper/40";
   return (
     <div>
-      <h3 className="eyebrow mb-3 text-paper/55">{title}</h3>
-      <ul className="space-y-2 text-sm leading-relaxed text-paper/80">
+      <h3 className="mb-3 text-sm font-medium text-type-strong">{title}</h3>
+      <ul className="space-y-2 text-sm leading-relaxed text-type-strong">
         {items.map((it, i) => (
           <li key={i} className="flex gap-2.5">
             <span
@@ -162,21 +164,21 @@ function KeywordRow({
 }) {
   const chip =
     tone === "positive"
-      ? "bg-sage-500/15 text-sage-200 border-sage-500/30"
+      ? "bg-sage-ink/12 text-sage-ink border-sage-ink/30"
       : tone === "partial"
-        ? "bg-yellow-500/15 text-yellow-200 border-yellow-500/30"
-        : "bg-red-500/15 text-red-200 border-red-500/30";
+        ? "bg-marigold/15 text-marigold-deep border-yellow-500/30"
+        : "bg-rust/15 text-rust border-rust/30";
   return (
     <div>
-      <div className="eyebrow mb-2.5 text-paper/50">{label}</div>
+      <div className="mb-2 text-sm font-medium text-type-strong">{label}</div>
       {words.length === 0 ? (
-        <div className="font-display text-xs italic text-paper/40">none</div>
+        <div className="font-display text-xs italic text-type-faint">none</div>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {words.map((w, i) => (
             <span
               key={i}
-              className={`rounded border px-2 py-0.5 font-mono text-xs break-all ${chip}`}
+              className={`border px-2 py-0.5 font-mono text-xs break-all ${chip}`}
             >
               {w}
             </span>

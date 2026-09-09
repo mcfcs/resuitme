@@ -43,16 +43,16 @@ export default function AddToCvPanel({
   const canPolish = hasRequiredFields(section, rough);
 
   return (
-    <div className="rounded-md border border-paper/10 bg-ink-raised/40 p-4 sm:p-6">
+    <div className="border border-type-strong/12 bg-stock-shade/40 p-4 sm:p-6">
       <div className="mb-5 flex flex-wrap items-center gap-3">
-        <label className="eyebrow text-paper/50">Add a new</label>
+        <label className="eyebrow text-type-muted">Add a new</label>
         <select
           value={section}
           onChange={(e) => onSelectSection(e.target.value as PolishKind)}
-          className="min-h-[2.75rem] flex-1 rounded-md border border-paper/15 bg-ink px-3 py-1.5 text-sm transition-colors focus:border-marigold/60 focus:outline-none sm:min-h-0 sm:flex-none"
+          className="min-h-[2.75rem] flex-1 border border-type-strong/20 bg-ink px-3 py-1.5 text-sm transition-colors focus-visible:border-marigold focus-visible:outline-none sm:min-h-0 sm:flex-none"
         >
           {(Object.keys(SECTION_LABELS) as PolishKind[]).map((k) => (
-            <option key={k} value={k} className="bg-neutral-900">
+            <option key={k} value={k} className="bg-stock">
               {SECTION_LABELS[k]}
             </option>
           ))}
@@ -75,7 +75,7 @@ export default function AddToCvPanel({
       </div>
 
       {error && (
-        <div className="mb-3 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+        <div className="mb-3 border border-rust/40 bg-rust/[0.07] px-3 py-2 text-xs text-rust">
           {error}
         </div>
       )}
@@ -85,11 +85,11 @@ export default function AddToCvPanel({
           <button
             onClick={onPolish}
             disabled={busy !== null || !canPolish}
-            className="w-full rounded-md bg-marigold px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-marigold-deep disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:py-2"
+            className="w-full bg-marigold px-4 py-2.5 text-sm font-medium text-stock transition hover:bg-marigold-deep disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:py-2"
           >
             {busy === "polish" ? "Polishing…" : "Generate polished version"}
           </button>
-          <span className="text-xs text-paper/40">
+          <span className="text-xs text-type-faint">
             The model rewrites your input into CV-quality content. You&apos;ll
             review before anything is added.
           </span>
@@ -103,21 +103,21 @@ export default function AddToCvPanel({
             <button
               onClick={onCommit}
               disabled={busy !== null}
-              className="w-full rounded-md bg-sage-500 px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-sage-400 disabled:opacity-40 sm:w-auto sm:py-2"
+              className="w-full bg-sage-ink px-4 py-2.5 text-sm font-medium text-stock transition hover:bg-sage-ink disabled:opacity-40 sm:w-auto sm:py-2"
             >
               {busy === "insert" ? "Inserting into CV…" : "Add to CV"}
             </button>
             <button
               onClick={onPolish}
               disabled={busy !== null}
-              className="flex-1 rounded-md border border-paper/15 px-3 py-2.5 text-xs text-paper/80 transition hover:bg-paper/5 disabled:opacity-40 sm:flex-none sm:py-2"
+              className="flex-1 border border-type-strong/20 px-3 py-2.5 text-xs text-type-strong transition hover:bg-stock-shade/60 disabled:opacity-40 sm:flex-none sm:py-2"
             >
               {busy === "polish" ? "Regenerating…" : "Regenerate"}
             </button>
             <button
               onClick={onDiscardPolish}
               disabled={busy !== null}
-              className="flex-1 rounded-md border border-paper/10 px-3 py-2.5 text-xs text-paper/60 transition hover:bg-paper/5 disabled:opacity-40 sm:flex-none sm:py-2"
+              className="flex-1 border border-type-strong/12 px-3 py-2.5 text-xs text-type-muted transition hover:bg-stock-shade/60 disabled:opacity-40 sm:flex-none sm:py-2"
             >
               Discard
             </button>
@@ -126,7 +126,7 @@ export default function AddToCvPanel({
       )}
 
       {justAdded && (
-        <div className="mt-4 rounded-md border border-sage-500/30 bg-sage-500/10 px-3 py-2 text-xs text-sage-200">
+        <div className="mt-4 border border-sage-ink/30 bg-sage-ink/10 px-3 py-2 text-xs text-sage-ink">
           {justAdded}
         </div>
       )}
@@ -146,7 +146,7 @@ function Field({
   const isTextarea = config.type === "textarea";
   return (
     <label className="block">
-      <div className="eyebrow text-paper/50 mb-1.5">
+      <div className="eyebrow text-type-muted mb-1.5">
         {config.label}
         {config.required && <span className="text-marigold ml-0.5">*</span>}
       </div>
@@ -155,7 +155,7 @@ function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={config.placeholder}
-          className="w-full text-sm bg-ink border border-paper/10 rounded-md px-3.5 py-2.5 h-28 resize-y focus:outline-none focus:border-marigold/60 focus:ring-1 focus:ring-marigold/30 transition-colors placeholder:text-paper/25"
+          className="w-full text-sm bg-ink border border-type-strong/12 px-3.5 py-2.5 h-28 resize-y focus-visible:outline-none focus-visible:border-marigold focus-visible:ring-1 focus-visible:ring-marigold/40 transition-colors placeholder:text-type-faint"
         />
       ) : (
         <input
@@ -163,11 +163,11 @@ function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={config.placeholder}
-          className="w-full text-sm bg-ink border border-paper/10 rounded-md px-3.5 py-2.5 focus:outline-none focus:border-marigold/60 focus:ring-1 focus:ring-marigold/30 transition-colors placeholder:text-paper/25"
+          className="w-full text-sm bg-ink border border-type-strong/12 px-3.5 py-2.5 focus-visible:outline-none focus-visible:border-marigold focus-visible:ring-1 focus-visible:ring-marigold/40 transition-colors placeholder:text-type-faint"
         />
       )}
       {config.hint && (
-        <div className="mt-1 text-[11px] text-paper/40">{config.hint}</div>
+        <div className="mt-1 text-[11px] text-type-faint">{config.hint}</div>
       )}
     </label>
   );

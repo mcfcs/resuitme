@@ -3,14 +3,40 @@
 @tailwind utilities;
 
 :root {
-  /* Warm ink & paper — a typesetter's palette */
+  /* A composing room, not a dashboard.
+     The tool takes LaTeX in and gives a typeset page back, so the interface is
+     built from the materials of typesetting: a dark press bed, a sheet of
+     stock laid on it, ink, and a single marigold register mark. */
+
+  /* The bed — what the sheet rests on. */
   --ink: 16 14 12;
   --ink-raised: 26 23 19;
+
+  /* The stock. Content sits ON this, the way a proof sits on a light table.
+     Warm, slightly toothy, never pure white. */
+  --stock: 244 240 232;
+  --stock-shade: 232 226 214;
+
+  /* Ink on stock — a real type-colour ramp, replacing 13 opacity steps of one
+     value standing in for hierarchy. */
+  --type-strong: 24 21 17;
+  --type-body: 58 52 44;
+  --type-muted: 112 104 92;
+  --type-faint: 114 106 94; /* 4.69:1 on --stock — clears WCAG AA, verified by scripts/shoot.mjs */
+
+  /* Ink on the bed, for the few surfaces that stay dark (code, the press). */
   --paper: 240 234 222;
-  --marigold: 232 168 56;
-  --marigold-deep: 196 132 30;
-  --sage: 142 178 122;
-  --rust: 206 110 86;
+
+  /* Register marks. One accent per mode, used sparingly — a mark, not a wash. */
+  --marigold: 186 122 18;
+  --marigold-deep: 152 96 10;
+  --marigold-lift: 232 168 56;
+  --sage: 82 112 62;
+  --sage-lift: 142 178 122;
+  --rust: 168 74 48;
+
+  /* The one measure. Body copy never exceeds it. */
+  --measure: 34rem;
 }
 
 html,

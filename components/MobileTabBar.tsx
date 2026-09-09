@@ -15,7 +15,7 @@ const TABS: Tab[] = [
   {
     href: "/",
     label: "Tailor",
-    accent: "text-marigold",
+    accent: "text-marigold-lift",
     icon: (
       // Document with a pen
       <svg
@@ -41,7 +41,7 @@ const TABS: Tab[] = [
   {
     href: "/build",
     label: "Build",
-    accent: "text-sage-300",
+    accent: "text-sage-lift",
     icon: (
       // Stacked blocks
       <svg
@@ -61,7 +61,7 @@ const TABS: Tab[] = [
   {
     href: "/profile",
     label: "Profile",
-    accent: "text-marigold",
+    accent: "text-marigold-lift",
     icon: (
       <svg
         viewBox="0 0 24 24"
@@ -100,7 +100,7 @@ export default function MobileTabBar() {
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
                 className={`flex min-h-[3.25rem] flex-col items-center justify-center gap-1 px-2 py-2 transition-colors ${
-                  active ? tab.accent : "text-paper/45 active:text-paper/70"
+                  active ? tab.accent : "text-paper/65 active:text-paper/85"
                 }`}
               >
                 <span className="h-[22px] w-[22px]">{tab.icon}</span>

@@ -16,7 +16,8 @@ import {
   type AtsScanResult,
 } from "@/lib/render";
 import { lintLatexForAts, type AtsFinding } from "@/lib/ats/source-lint";
-import SiteNav from "@/components/SiteNav";
+import PageShell from "@/components/PageShell";
+import { Region, Note, Notice } from "@/components/Sheet";
 import BackendFooter from "@/components/BackendFooter";
 import { AnalysisCard, ScorePill } from "@/components/Analysis";
 import FitVerdictNotice from "@/components/FitVerdict";
@@ -282,63 +283,47 @@ export default function Home() {
   const inputsLocked = phase !== "input" && phase !== "analyzed";
 
   return (
-    <main className="mx-auto min-h-screen max-w-6xl px-4 py-6 px-safe pb-tabbar sm:px-6 md:py-12">
-      <SiteNav />
-
-      <header className="mb-10 max-w-3xl md:mb-14">
-        <div
-          className="eyebrow mb-4 animate-rise-in text-marigold md:mb-5"
-          style={{ animationDelay: "60ms" }}
-        >
-          Honest resume tailoring
-        </div>
-        <h1
-          className="animate-rise-in font-display text-4xl font-medium leading-[1.02] tracking-tight sm:text-5xl md:text-7xl md:leading-[0.95]"
-          style={{ animationDelay: "120ms" }}
-        >
-          Tailor your résumé,{" "}
-          <span className="italic text-marigold">truthfully.</span>
-        </h1>
-        <p
-          className="mt-5 max-w-xl animate-rise-in text-base leading-relaxed text-paper/65 md:mt-6 md:text-lg"
-          style={{ animationDelay: "220ms" }}
-        >
-          Paste your LaTeX résumé and a job description. Get an honest rating,
-          then a tailored rewrite that only emphasizes skills you{" "}
-          <em className="font-medium not-italic text-paper/90">
-            actually have
-          </em>
-          .
-        </p>
-      </header>
-
+    <PageShell
+      title="Tailor a résumé you can defend in the interview"
+      intro={
+        <>
+          Paste your LaTeX résumé and the job description. You get a fit
+          assessment first, then a rewrite that only leans on skills you
+          actually have.
+        </>
+      }
+      footer={<BackendFooter label="Resuitme" />}
+    >
       {error && (
-        <div className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-          <strong className="font-semibold">Error:</strong> {error}
-        </div>
+        <Notice tone="bad">
+          <strong className="font-medium text-type-strong">
+            Something went wrong.
+          </strong>{" "}
+          {error}
+        </Notice>
       )}
 
-      {/* Input panel */}
-      <section
-        className="mb-6 grid animate-rise-in gap-5 md:grid-cols-2"
-        style={{ animationDelay: "320ms" }}
-      >
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-8">
         <div className="flex flex-col">
-          <div className="mb-2.5 flex items-center justify-between gap-3">
-            <label className="eyebrow text-paper/55">
-              01 — Résumé · LaTeX source
+          <div className="mb-2 flex items-baseline justify-between gap-3">
+            <label
+              htmlFor="resume-source"
+              className="text-sm font-medium text-type-strong"
+            >
+              Your résumé
             </label>
             {profile?.baseResumeLatex && (
               <button
                 onClick={loadBaseResume}
                 disabled={inputsLocked}
-                className="shrink-0 text-xs text-sage-300 underline underline-offset-4 hover:text-sage-200 disabled:no-underline disabled:opacity-40"
+                className="shrink-0 text-sm text-marigold underline underline-offset-4 hover:text-marigold-deep disabled:no-underline disabled:opacity-40"
               >
-                Use my base résumé
+                Use my saved one
               </button>
             )}
           </div>
           <textarea
+            id="resume-source"
             value={resume}
             onChange={(e) => setResume(e.target.value)}
             disabled={inputsLocked}
@@ -346,61 +331,64 @@ export default function Home() {
             autoCapitalize="off"
             autoCorrect="off"
             placeholder={`\\documentclass{article}\n\\begin{document}\n...\n\\end{document}`}
-            className="h-56 resize-y rounded-md border border-paper/10 bg-ink-raised/60 px-4 py-3 font-mono text-sm transition-colors placeholder:text-paper/25 focus:border-marigold/60 focus:outline-none focus:ring-1 focus:ring-marigold/30 disabled:opacity-60 sm:h-72 md:h-96"
+            className="h-52 resize-y border border-type-strong/15 bg-stock-shade/50 px-3.5 py-3 font-mono text-[0.8125rem] leading-relaxed text-type-strong transition-colors placeholder:text-type-faint focus-visible:border-marigold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marigold/40 disabled:opacity-60 sm:h-64 lg:h-[26rem]"
           />
-          <div className="mt-1.5 text-xs tabular-nums text-paper/40">
-            {resume.length.toLocaleString()} chars
-          </div>
+          <p className="mt-1.5 text-xs tabular-nums text-type-faint">
+            {resume.length.toLocaleString()} characters
+          </p>
         </div>
 
         <div className="flex flex-col">
-          <label className="eyebrow mb-2.5 text-paper/55">
-            02 — Job description
+          <label
+            htmlFor="job-description"
+            className="mb-2 text-sm font-medium text-type-strong"
+          >
+            The job description
           </label>
           <textarea
+            id="job-description"
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
             disabled={inputsLocked}
-            placeholder="Paste the full job description here…"
-            className="h-56 resize-y rounded-md border border-paper/10 bg-ink-raised/60 px-4 py-3 text-sm leading-relaxed transition-colors placeholder:text-paper/25 focus:border-marigold/60 focus:outline-none focus:ring-1 focus:ring-marigold/30 disabled:opacity-60 sm:h-72 md:h-96"
+            placeholder="Paste the whole posting — requirements included."
+            className="h-52 resize-y border border-type-strong/15 bg-stock-shade/50 px-3.5 py-3 text-sm leading-relaxed text-type-strong transition-colors placeholder:text-type-faint focus-visible:border-marigold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marigold/40 disabled:opacity-60 sm:h-64 lg:h-[26rem]"
           />
-          <div className="mt-1.5 text-xs tabular-nums text-paper/40">
-            {jobDescription.length.toLocaleString()} chars
-          </div>
+          <p className="mt-1.5 text-xs tabular-nums text-type-faint">
+            {jobDescription.length.toLocaleString()} characters
+          </p>
         </div>
-      </section>
+      </div>
 
-      <div className="mb-12 flex flex-wrap items-center gap-3 md:mb-16">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={analyzeOriginal}
           disabled={!canAnalyze || busy !== null}
-          className="w-full rounded-md bg-marigold px-6 py-3 text-sm font-semibold text-ink shadow-[0_2px_20px_-6px_rgba(232,168,56,0.6)] transition-all hover:bg-marigold-deep hover:shadow-[0_4px_28px_-6px_rgba(232,168,56,0.8)] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+          className="w-full bg-type-strong px-6 py-3 text-sm font-medium text-stock transition-colors hover:bg-marigold-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marigold disabled:cursor-not-allowed disabled:bg-type-muted disabled:text-stock sm:w-auto"
         >
-          {busy === "analyze" ? "Analyzing…" : "Analyze résumé"}
+          {busy === "analyze" ? "Reading it…" : "Check the fit"}
         </button>
         {phase !== "input" && (
           <button
             onClick={reset}
             disabled={busy !== null}
-            className="w-full rounded-md border border-paper/15 px-5 py-3 text-sm text-paper/70 transition hover:border-paper/30 hover:bg-paper/5 disabled:opacity-40 sm:w-auto"
+            className="w-full border border-type-strong/20 px-5 py-3 text-sm text-type-body transition-colors hover:bg-stock-shade focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-marigold disabled:opacity-40 sm:w-auto"
           >
             Start over
           </button>
         )}
         {!canAnalyze && (
-          <span className="font-display text-xs italic text-paper/40">
-            Paste a résumé and a job description to begin.
-          </span>
+          <Note className="text-type-faint">
+            Both fields are needed before anything can be checked.
+          </Note>
         )}
       </div>
 
       {/* Original analysis */}
       {originalAnalysis && (
-        <section className="mb-12 animate-rise-in md:mb-14">
-          <h2 className="mb-5 flex flex-wrap items-center gap-3 font-display text-2xl font-medium sm:text-3xl md:gap-4">
-            Original rating
-            <ScorePill score={originalAnalysis.score} />
-          </h2>
+        <Region
+          title="How it reads against this job"
+          aside={<ScorePill score={originalAnalysis.score} />}
+        >
           <div className="mb-6">
             <FitVerdictNotice fit={originalAnalysis.fit} accent="marigold" />
           </div>
@@ -419,7 +407,7 @@ export default function Home() {
                   setHonestNotes={setHonestNotes}
                   onContinue={tailor}
                   busy={busy !== null}
-                  ctaLabel="Tailor honestly →"
+                  ctaLabel="Tailor the résumé"
                   sourceNoun="your résumé doesn't mention"
                   outputNoun="tailored version"
                 />
@@ -430,27 +418,29 @@ export default function Home() {
                     disabled={busy !== null}
                     className="w-full rounded-md bg-sage-500 px-6 py-3 text-sm font-semibold text-ink transition hover:bg-sage-400 disabled:opacity-40 sm:w-auto"
                   >
-                    Tailor my résumé to this job →
+                    Tailor my résumé to this job
                   </button>
-                  <span className="font-display text-xs italic text-paper/40">
+                  <span className="text-sm text-type-muted">
                     No keyword gaps — straightforward tailor.
                   </span>
                 </div>
               )}
             </div>
           )}
-        </section>
+        </Region>
       )}
 
       {/* Tailoring state */}
       {phase === "tailoring" && (
-        <section className="mb-12 animate-fade-in rounded-md border border-marigold/20 bg-ink-raised/40 p-6 text-center sm:p-10 md:mb-14">
-          <div className="mb-5 flex justify-center gap-1.5" aria-hidden>
-            <span className="h-2 w-2 animate-bounce rounded-full bg-marigold [animation-delay:-0.3s]" />
-            <span className="h-2 w-2 animate-bounce rounded-full bg-marigold [animation-delay:-0.15s]" />
-            <span className="h-2 w-2 animate-bounce rounded-full bg-marigold" />
-          </div>
-          <div className="font-display text-lg text-paper/85 sm:text-xl">
+        <Region className="border-t-type-strong/12">
+          <div
+            role="status"
+            className="flex items-baseline gap-3 font-display text-lg text-type-strong sm:text-xl"
+          >
+            <span
+              aria-hidden
+              className="h-2 w-2 shrink-0 translate-y-[-0.15em] animate-pulse rounded-full bg-marigold"
+            />
             {busy === "tailor"
               ? "Tailoring your résumé…"
               : busy === "render"
@@ -461,33 +451,33 @@ export default function Home() {
                     ? "Trimming to fit one page…"
                     : "Re-analyzing the tailored version…"}
           </div>
-          <div className="mt-2 text-xs text-paper/40">
-            This runs several model passes — expect 30–60s on a hosted model,
-            longer on a local one.
-          </div>
-        </section>
+          <Note className="mt-2 text-type-faint">
+            Several model passes run in sequence. Expect 30–60 seconds on a
+            hosted model, longer on a local one.
+          </Note>
+        </Region>
       )}
 
       {/* Tailored result */}
       {phase === "tailored" && tailoredAnalysis && (
         <>
-          <section className="mb-12 animate-rise-in md:mb-14">
+          <Region className="border-t-type-strong/12">
             <h2 className="mb-5 flex flex-wrap items-center gap-3 font-display text-2xl font-medium sm:text-3xl md:gap-4">
               Tailored rating
               <ScorePill score={tailoredAnalysis.score} />
               {originalAnalysis && (
-                <span className="text-sm font-normal text-paper/50">
+                <span className="text-sm font-normal text-type-muted">
                   was{" "}
-                  <span className="text-paper/70">
+                  <span className="text-type-body">
                     {originalAnalysis.score}
                   </span>
                   {tailoredAnalysis.score > originalAnalysis.score && (
-                    <span className="ml-2 text-sage-400">
+                    <span className="ml-2 text-sage-ink">
                       +{tailoredAnalysis.score - originalAnalysis.score}
                     </span>
                   )}
                   {tailoredAnalysis.score < originalAnalysis.score && (
-                    <span className="ml-2 text-orange-300">
+                    <span className="ml-2 text-rust">
                       {tailoredAnalysis.score - originalAnalysis.score}
                     </span>
                   )}
@@ -495,7 +485,7 @@ export default function Home() {
               )}
             </h2>
             <AnalysisCard analysis={tailoredAnalysis} accent="marigold" />
-          </section>
+          </Region>
 
           <LatexResult
             title="Tailored LaTeX"
@@ -516,8 +506,6 @@ export default function Home() {
           />
         </>
       )}
-
-      <BackendFooter label="Resuitme" />
-    </main>
+    </PageShell>
   );
 }

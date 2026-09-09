@@ -9,7 +9,8 @@
 
 import { getTemplate } from "@/lib/templates";
 import { saveProfile } from "@/lib/profile";
-import SiteNav from "@/components/SiteNav";
+import PageShell from "@/components/PageShell";
+import { Region, Note, Notice } from "@/components/Sheet";
 import BackendFooter from "@/components/BackendFooter";
 import { AnalysisCard, ScorePill } from "@/components/Analysis";
 import FitVerdictNotice from "@/components/FitVerdict";
@@ -58,85 +59,64 @@ export default function BuildPage() {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-6xl px-4 py-6 px-safe pb-tabbar sm:px-6 md:py-12">
-      <SiteNav />
-
-      <header className="mb-10 max-w-3xl md:mb-14">
-        <div
-          className="eyebrow mb-4 animate-rise-in text-sage-400 md:mb-5"
-          style={{ animationDelay: "60ms" }}
-        >
-          Build mode
-        </div>
-        <h1
-          className="animate-rise-in font-display text-4xl font-medium leading-[1.02] tracking-tight sm:text-5xl md:text-7xl md:leading-[0.95]"
-          style={{ animationDelay: "120ms" }}
-        >
-          Build a résumé,{" "}
-          <span className="italic text-sage-400">from scratch.</span>
-        </h1>
-        <p
-          className="mt-5 max-w-xl animate-rise-in text-base leading-relaxed text-paper/65 md:mt-6 md:text-lg"
-          style={{ animationDelay: "220ms" }}
-        >
-          Paste a job post. Resuitme composes a one-page résumé from your full
-          profile and CV — tailored to the role,{" "}
-          <em className="font-medium not-italic text-paper/90">
-            never invented
-          </em>
-          .
-        </p>
-      </header>
-
+    <PageShell
+      title="Compose a résumé from everything you have"
+      accent="sage"
+      intro={
+        <>
+          Paste a job post. Resuitme picks from your saved profile and CV to
+          fill one page — selecting and reframing what you have, never inventing
+          what you don&apos;t.
+        </>
+      }
+      footer={<BackendFooter label="Resuitme — build mode" />}
+    >
       {error && (
-        <div className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-          <strong className="font-semibold">Error:</strong> {error}
-        </div>
+        <Notice tone="bad">
+          <strong className="font-medium text-type-strong">
+            Something went wrong.
+          </strong>{" "}
+          {error}
+        </Notice>
       )}
 
-      {/* Template + content pool */}
       {hydrated && (
-        <section
-          className="mb-6 animate-rise-in"
-          style={{ animationDelay: "260ms" }}
-        >
-          <TemplateCard
-            profile={profile}
-            usingBuiltin={usingBuiltinTemplate}
-            hasProfileContent={hasProfileContent}
-            templateName={template.name}
-            templateDescription={template.description}
-            templateId={templateId}
-            onSelectTemplate={selectTemplate}
-          />
-        </section>
+        <TemplateCard
+          profile={profile}
+          usingBuiltin={usingBuiltinTemplate}
+          hasProfileContent={hasProfileContent}
+          templateName={template.name}
+          templateDescription={template.description}
+          templateId={templateId}
+          onSelectTemplate={selectTemplate}
+        />
       )}
 
-      {/* JD input */}
-      <section
-        className="mb-6 animate-rise-in"
-        style={{ animationDelay: "320ms" }}
-      >
-        <label className="eyebrow mb-2.5 block text-paper/55">
-          01 — Job description
+      <div>
+        <label
+          htmlFor="build-jd"
+          className="mb-2 block text-sm font-medium text-type-strong"
+        >
+          The job description
         </label>
         <textarea
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
           disabled={phase !== "input" && phase !== "analyzed"}
           placeholder="Paste the full job description here…"
-          className="h-56 w-full resize-y rounded-md border border-paper/10 bg-ink-raised/60 px-4 py-3 text-sm leading-relaxed transition-colors placeholder:text-paper/25 focus:border-sage-500/60 focus:outline-none focus:ring-1 focus:ring-sage-500/30 disabled:opacity-60 sm:h-72"
+          id="build-jd"
+          className="h-52 w-full resize-y border border-type-strong/15 bg-stock-shade/50 px-3.5 py-3 text-sm leading-relaxed text-type-strong transition-colors placeholder:text-type-faint focus-visible:border-sage-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sage-ink/40 disabled:opacity-60 sm:h-64 lg:h-72"
         />
-        <div className="mt-1.5 text-xs tabular-nums text-paper/40">
-          {jobDescription.length.toLocaleString()} chars
-        </div>
-      </section>
+        <p className="mt-1.5 text-xs tabular-nums text-type-faint">
+          {jobDescription.length.toLocaleString()} characters
+        </p>
+      </div>
 
-      <div className="mb-12 flex flex-wrap items-center gap-3 md:mb-16">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={analyzeFit}
           disabled={!canAnalyze || busy !== null}
-          className="w-full rounded-md bg-sage-500 px-6 py-3 text-sm font-semibold text-ink shadow-[0_2px_20px_-6px_rgba(116,160,94,0.7)] transition-all hover:bg-sage-400 hover:shadow-[0_4px_28px_-6px_rgba(116,160,94,0.9)] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+          className="w-full bg-type-strong px-6 py-3 text-sm font-medium text-stock transition-colors hover:bg-sage-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sage-ink disabled:cursor-not-allowed disabled:bg-type-muted disabled:text-stock sm:w-auto"
         >
           {busy === "analyze" ? "Analyzing fit…" : "Analyze fit"}
         </button>
@@ -144,13 +124,13 @@ export default function BuildPage() {
           <button
             onClick={reset}
             disabled={busy !== null}
-            className="w-full rounded-md border border-paper/15 px-5 py-3 text-sm text-paper/70 transition hover:border-paper/30 hover:bg-paper/5 disabled:opacity-40 sm:w-auto"
+            className="w-full rounded-md border border-paper/15 px-5 py-3 text-sm text-type-body transition hover:border-paper/30 hover:bg-paper/5 disabled:opacity-40 sm:w-auto"
           >
             Start over
           </button>
         )}
         {!canAnalyze && (
-          <span className="font-display text-xs italic text-paper/40">
+          <span className="text-sm text-type-muted">
             {!hasProfileContent
               ? "Build a profile first to use Build mode."
               : "Paste a job description to begin."}
@@ -183,7 +163,7 @@ export default function BuildPage() {
                   setHonestNotes={setHonestNotes}
                   onContinue={build}
                   busy={busy !== null}
-                  ctaLabel="Build the résumé honestly →"
+                  ctaLabel="Build the résumé"
                   sourceNoun="your profile doesn't cover"
                   outputNoun="built résumé"
                 />
@@ -192,11 +172,11 @@ export default function BuildPage() {
                   <button
                     onClick={build}
                     disabled={busy !== null}
-                    className="w-full rounded-md bg-sage-500 px-6 py-3 text-sm font-semibold text-ink transition hover:bg-sage-400 disabled:opacity-40 sm:w-auto"
+                    className="w-full rounded-md bg-sage-ink px-6 py-3 text-sm font-semibold text-ink transition hover:bg-sage-ink disabled:opacity-40 sm:w-auto"
                   >
-                    Build my résumé for this job →
+                    Build my résumé for this job
                   </button>
-                  <span className="font-display text-xs italic text-paper/40">
+                  <span className="text-sm text-type-muted">
                     No keyword gaps — straight build.
                   </span>
                 </div>
@@ -208,13 +188,13 @@ export default function BuildPage() {
 
       {/* Building state */}
       {phase === "building" && (
-        <section className="mb-12 animate-fade-in rounded-md border border-sage-500/20 bg-ink-raised/40 p-6 text-center sm:p-10 md:mb-14">
+        <section className="mb-12 animate-fade-in rounded-md border border-sage-ink/20 bg-ink-raised/40 p-6 text-center sm:p-10 md:mb-14">
           <div className="mb-5 flex justify-center gap-1.5" aria-hidden>
-            <span className="h-2 w-2 animate-bounce rounded-full bg-sage-500 [animation-delay:-0.3s]" />
-            <span className="h-2 w-2 animate-bounce rounded-full bg-sage-500 [animation-delay:-0.15s]" />
-            <span className="h-2 w-2 animate-bounce rounded-full bg-sage-500" />
+            <span className="h-2 w-2 animate-bounce rounded-full bg-sage-ink [animation-delay:-0.3s]" />
+            <span className="h-2 w-2 animate-bounce rounded-full bg-sage-ink [animation-delay:-0.15s]" />
+            <span className="h-2 w-2 animate-bounce rounded-full bg-sage-ink" />
           </div>
-          <div className="font-display text-lg text-paper/85 sm:text-xl">
+          <div className="font-display text-lg text-type-strong sm:text-xl">
             {busy === "build"
               ? "Building your résumé from profile…"
               : busy === "render"
@@ -227,7 +207,7 @@ export default function BuildPage() {
                       ? "Checking what a résumé parser reads…"
                       : "Scoring the built résumé…"}
           </div>
-          <div className="mt-2 text-xs text-paper/40">
+          <div className="mt-2 text-xs text-type-muted">
             This runs several model passes — expect 30–60s on a hosted model,
             longer on a local one.
           </div>
@@ -242,18 +222,18 @@ export default function BuildPage() {
               Built résumé rating
               <ScorePill score={builtAnalysis.score} />
               {profileFitAnalysis && (
-                <span className="text-sm font-normal text-paper/50">
+                <span className="text-sm font-normal text-type-muted">
                   your profile fit was{" "}
-                  <span className="text-paper/70">
+                  <span className="text-type-body">
                     {profileFitAnalysis.score}
                   </span>
                   {builtAnalysis.score > profileFitAnalysis.score && (
-                    <span className="ml-2 text-sage-400">
+                    <span className="ml-2 text-sage-ink">
                       +{builtAnalysis.score - profileFitAnalysis.score}
                     </span>
                   )}
                   {builtAnalysis.score < profileFitAnalysis.score && (
-                    <span className="ml-2 text-orange-300">
+                    <span className="ml-2 text-rust">
                       {builtAnalysis.score - profileFitAnalysis.score}
                     </span>
                   )}
@@ -274,15 +254,13 @@ export default function BuildPage() {
             accent="sage"
             hint={
               <>
-                Tap <span className="text-sage-300">Overleaf</span> for an
+                Tap <span className="text-sage-ink">Overleaf</span> for an
                 instant PDF preview in a new tab.
               </>
             }
           />
         </>
       )}
-
-      <BackendFooter label="Resuitme — build mode" />
-    </main>
+    </PageShell>
   );
 }

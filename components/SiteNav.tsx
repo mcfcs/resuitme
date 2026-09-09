@@ -28,7 +28,7 @@ export default function SiteNav({
     { href: "/build", label: "Build mode", accent: "sage" as const },
     {
       href: "/profile",
-      label: hasProfile ? "Your profile →" : "Set up profile →",
+      label: hasProfile ? "Your profile" : "Set up profile",
       accent: "marigold" as const,
     },
   ].filter((l) =>
@@ -36,31 +36,22 @@ export default function SiteNav({
   );
 
   return (
-    <nav className="mb-8 flex items-center justify-between gap-4 md:mb-12 animate-fade-in">
+    <nav className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 sm:mb-5">
       <Link
         href="/"
-        className="group flex shrink-0 items-baseline gap-0.5"
+        className="shrink-0 font-display text-lg font-semibold tracking-tight text-paper/90 transition-colors hover:text-paper"
         aria-label="Resuitme home"
       >
-        <span className="font-display text-xl font-semibold tracking-tight sm:text-2xl">
-          Resuitme
-        </span>
-        <span className="font-display text-xl italic leading-none text-marigold sm:text-2xl">
-          .
-        </span>
+        Resuitme
       </Link>
 
-      {/* Desktop: full text nav. Mobile: the bottom tab bar covers this. */}
-      <div className="hidden items-center gap-5 md:flex">
+      {/* Desktop only: the bottom tab bar covers navigation on small screens. */}
+      <div className="hidden items-center gap-6 md:flex">
         {links.map((l) => (
           <Link
             key={l.href}
             href={l.href}
-            className={`eyebrow border-b pb-1 text-paper/60 transition-colors ${
-              l.accent === "sage"
-                ? "border-transparent hover:border-sage-400 hover:text-sage-300"
-                : "border-paper/15 hover:border-marigold hover:text-marigold"
-            }`}
+            className="text-sm text-paper/55 underline-offset-[6px] transition-colors hover:text-paper hover:underline"
           >
             {l.label}
           </Link>
@@ -68,7 +59,9 @@ export default function SiteNav({
       </div>
 
       {trailing ? (
-        <div className="flex items-center gap-3 md:gap-4">{trailing}</div>
+        <div className="order-last flex w-full flex-wrap items-center gap-x-4 gap-y-1.5 sm:order-none sm:w-auto sm:justify-end">
+          {trailing}
+        </div>
       ) : null}
     </nav>
   );
