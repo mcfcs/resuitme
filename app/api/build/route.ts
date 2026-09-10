@@ -14,12 +14,35 @@ import {
   mergeHonestSignals,
 } from "@/lib/prompts/context";
 import { BUILD_SYSTEM_PROMPT } from "@/lib/prompts/build";
+import {
+  findUngroundedNumbers,
+  type NumericClaim,
+} from "@/lib/ats/number-check";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
 // Re-exported so existing client imports from this route keep working.
 export type { HonestVerdict, HonestSignals } from "@/lib/prompts/context";
+
+/**
+ * Names the figures the previous draft invented, so the retry cannot reuse
+ * them. Deliberately does NOT say "add a different number" — the correct fix
+ * is almost always to state the achievement without a quantity.
+ */
+function ungroundedNumbersBlock(claims: NumericClaim[] | undefined): string {
+  if (!claims?.length) return "";
+  return `
+=== FABRICATED FIGURES (your previous draft invented these — remove them) ===
+${claims.map((c, i) => `${i + 1}. "${c.raw}" in: ${c.context}`).join("\n")}
+
+None of these numbers appear anywhere in the candidate's profile. You invented
+them. Rewrite each of those statements WITHOUT the figure — describe what was
+actually done and drop the quantity. Do not substitute a different number, and
+do not invent figures anywhere else: every digit you write must be traceable to
+the profile above.
+`;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,6 +55,7 @@ export async function POST(req: NextRequest) {
       honest,
       budget,
       cuts,
+      additions,
     } = (await req.json()) as {
       jobDescription?: string;
       template?: string;
@@ -45,6 +69,8 @@ export async function POST(req: NextRequest) {
       honest?: HonestSignals;
       budget?: number;
       cuts?: string[];
+      /** Quote-verified instructions from the expand planner. */
+      additions?: string[];
     };
 
     if (!jobDescription?.trim()) {
@@ -115,7 +141,22 @@ ${profileParts.join("\n\n")}
 
     const budgetBlock =
       typeof budget === "number" && budget > 0
-        ? `\nVISIBLE_CHAR_BUDGET: ${budget}\nTarget: ${Math.round(budget * 0.95)}\n`
+        ? `\nVISIBLE_CHAR_BUDGET: ${budget}\nTarget: ${Math.round(budget * COMPOSE_TARGET_FRACTION)}\n`
+        : "";
+
+    const additionsBlock =
+      additions && additions.length > 0
+        ? `
+=== ADDITIONS_TO_APPLY (the previous draft left the page underfilled) ===
+Each instruction below names real material from the candidate's own profile,
+already verified against it. Apply every one.
+
+${additions.map((a, i) => `${i + 1}. ${a}`).join("\n")}
+
+These are the ONLY new material you may add. Do not invent anything beyond
+them, and do not pad. The visible-character ceiling above still binds — if
+applying all of them would exceed it, apply the highest-value ones and stop.
+`
         : "";
 
     const cutsBlock =
@@ -125,28 +166,75 @@ ${cuts.map((c, i) => `${i + 1}. ${c}`).join("\n")}
 `
         : "";
 
-    const latex = await completeText({
-      tier: "primary",
-      maxTokens: 16000,
-      thinking: true,
-      system: BUILD_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: `Build a one-page LaTeX résumé for the candidate, targeted at the job description below, by composing content from the profile into the provided template's layout.
+    // The candidate's own material, and the ONLY thing a figure may be drawn
+    // from. Same pool the model composes off, so anything it may legitimately
+    // write is in here.
+    const numericPool = [
+      profileParts.join("\n\n"),
+      analysisContext,
+      additions?.join("\n") ?? "",
+    ].join("\n\n");
+
+    const generate = (forbidden?: NumericClaim[]) =>
+      completeText({
+        tier: "primary",
+        maxTokens: 16000,
+        thinking: true,
+        system: BUILD_SYSTEM_PROMPT,
+        messages: [
+          {
+            role: "user",
+            content: `Build a one-page LaTeX résumé for the candidate, targeted at the job description below, by composing content from the profile into the provided template's layout.
 
 === JOB DESCRIPTION ===
 ${jobDescription}
-${budgetBlock}${cutsBlock}${analysisContext}${fitBlock}${honestBlock}${profileBlock}${layoutContract}
+${budgetBlock}${cutsBlock}${additionsBlock}${ungroundedNumbersBlock(forbidden)}${analysisContext}${fitBlock}${honestBlock}${profileBlock}${layoutContract}
 === LATEX TEMPLATE (preserve preamble, packages, custom macros, and section structure; replace all placeholder content with profile material tailored to the JD) ===
 ${templateLatex}
 
 Return the complete built LaTeX source. No code fences. No commentary.`,
-        },
-      ],
-    });
+          },
+        ],
+      });
 
-    return NextResponse.json({ latex });
+    const latex = await generate();
+
+    // --- numeric honesty gate --------------------------------------------
+    // A quantity the profile does not support is fabrication, and unlike a
+    // disclaimed keyword nothing else catches it: measured, the model turned
+    // "maximize margins and inventory turnover" into "boosting inventory
+    // turnover by 15%". Regenerate ONCE naming the offenders, then keep
+    // whichever draft invents less — never a draft that invents more.
+    const ungrounded = findUngroundedNumbers(latex, numericPool);
+    if (ungrounded.length === 0) {
+      return NextResponse.json({ latex });
+    }
+
+    console.warn(
+      "[/api/build] ungrounded figures, regenerating:",
+      ungrounded.map((c) => c.raw),
+    );
+
+    let retry: string;
+    try {
+      retry = await generate(ungrounded);
+    } catch (err) {
+      // A failed retry must never lose a usable draft.
+      console.error(
+        "[/api/build] regeneration failed, keeping first draft",
+        err,
+      );
+      return NextResponse.json({ latex, ungroundedNumbers: ungrounded.length });
+    }
+
+    const retryUngrounded = findUngroundedNumbers(retry, numericPool);
+    const improved = retryUngrounded.length < ungrounded.length;
+
+    return NextResponse.json({
+      latex: improved ? retry : latex,
+      ungroundedNumbers: improved ? retryUngrounded.length : ungrounded.length,
+      numericRetry: true,
+    });
   } catch (err) {
     console.error("[/api/build]", err);
     const { error, status } = llmErrorResponse(err);
