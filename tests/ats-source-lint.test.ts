@@ -206,6 +206,139 @@ describe("lintLatexForAts — comments are not code", () => {
   });
 });
 
+describe("lintLatexForAts — compile validity: unescaped ampersand", () => {
+  it("flags the measured \\resumeSubheading argument that failed to compile", () => {
+    // The real string from the profile-input-kind fixture: \resumeSubheading
+    // expands to a tabular*, but its ARGUMENT is tokenized at the call site
+    // where no alignment is in scope, so this is a hard error.
+    const latex = CLEAN.replace(
+      "Built things.",
+      String.raw`\resumeSubheading
+      {Acme Corp}{2024 -- Present}
+      {Founder & Data Analyst}{Remote}`,
+    );
+    const f = lintLatexForAts(latex).find(
+      (x) => x.id === "unescaped-ampersand",
+    );
+    expect(f?.severity).toBe("critical");
+    expect(f?.fix).toContain("\\&");
+    expect(f?.evidence).toContain("Founder & Data Analyst");
+  });
+
+  it("does not flag a legitimate & in a tabular row", () => {
+    const latex = CLEAN.replace(
+      "Built things.",
+      String.raw`\begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{\footnotesize Acme Corp} & \footnotesize 2024 \\
+      \textit{\footnotesize Analyst} & \textit{\footnotesize Remote} \\
+    \end{tabular*}`,
+    );
+    expect(ids(latex)).not.toContain("unescaped-ampersand");
+  });
+
+  it("does not flag an & inside an align environment", () => {
+    const latex = CLEAN.replace(
+      "Built things.",
+      String.raw`\begin{align}
+      f(x) &= x^2 \\
+    \end{align}`,
+    );
+    expect(ids(latex)).not.toContain("unescaped-ampersand");
+  });
+
+  it("does not flag an already-escaped \\&", () => {
+    // The sample uses this shape: \textbf{Data Analysis \& ML:} ...
+    const latex = CLEAN.replace(
+      "Built things.",
+      String.raw`\textbf{Data Analysis \& ML:} Pandas, NumPy \\`,
+    );
+    expect(ids(latex)).not.toContain("unescaped-ampersand");
+  });
+
+  it("ignores a bare & that is commented out", () => {
+    const latex = CLEAN.replace(
+      "Built things.",
+      String.raw`% {Founder & Data Analyst}` + "\nBuilt things.",
+    );
+    expect(ids(latex)).not.toContain("unescaped-ampersand");
+  });
+});
+
+describe("lintLatexForAts — compile validity: unbalanced braces", () => {
+  it("flags the measured stray }} after an already-closed group", () => {
+    // The real second defect: \small{\item{...}} followed by a further }}.
+    const latex = CLEAN.replace(
+      "Built things.",
+      String.raw`\small{\item{ Built a data pipeline. }}
+}}`,
+    );
+    const f = lintLatexForAts(latex).find((x) => x.id === "unbalanced-braces");
+    expect(f?.severity).toBe("critical");
+    expect(f?.fix).toMatch(/remove the extra closing brace/i);
+  });
+
+  it("flags brace depth going negative", () => {
+    const latex = CLEAN.replace("Built things.", "Built things.}");
+    const f = lintLatexForAts(latex).find((x) => x.id === "unbalanced-braces");
+    expect(f?.title).toMatch(/extra closing brace/i);
+    expect(f?.detail).toMatch(/too many/i);
+  });
+
+  it("flags a group left unclosed at end of document", () => {
+    const latex = CLEAN.replace("Built things.", String.raw`\textbf{Built`);
+    const f = lintLatexForAts(latex).find((x) => x.id === "unbalanced-braces");
+    expect(f?.severity).toBe("critical");
+    expect(f?.title).toMatch(/unclosed/i);
+  });
+
+  it("does not flag balanced nested macros", () => {
+    const latex = CLEAN.replace(
+      "Built things.",
+      String.raw`\resumeItem{\textbf{Built} a \textit{fast}{ }pipeline}`,
+    );
+    expect(ids(latex)).not.toContain("unbalanced-braces");
+  });
+
+  it("does not flag escaped braces \\{ and \\}", () => {
+    const latex = CLEAN.replace(
+      "Built things.",
+      String.raw`Wrote \texttt{\{"k": 1\}} to disk`,
+    );
+    expect(ids(latex)).not.toContain("unbalanced-braces");
+  });
+
+  it("ignores braces inside a verbatim block", () => {
+    const latex = CLEAN.replace(
+      "Built things.",
+      "\\begin{verbatim}\n}}}\n\\end{verbatim}",
+    );
+    expect(ids(latex)).not.toContain("unbalanced-braces");
+  });
+
+  it("ignores an unbalanced brace that is commented out", () => {
+    const latex = CLEAN.replace("Built things.", "Built things. % }}}");
+    expect(ids(latex)).not.toContain("unbalanced-braces");
+  });
+});
+
+describe("lintLatexForAts — compile rules do not fire on real documents", () => {
+  // The correctness bar: a false "your résumé won't compile" on a résumé that
+  // compiles fine is worse than missing one. These are all known-good sources.
+  const COMPILE_IDS = ["unescaped-ampersand", "unbalanced-braces"];
+
+  it("finds no compile problems in sampleresume.tex", () => {
+    const found = ids(SAMPLE).filter((id) => COMPILE_IDS.includes(id));
+    expect(found).toEqual([]);
+  });
+
+  it("finds no compile problems in any built-in template", () => {
+    for (const t of Object.values(TEMPLATES)) {
+      const found = ids(t.latex).filter((id) => COMPILE_IDS.includes(id));
+      expect(found, `template "${t.id}"`).toEqual([]);
+    }
+  });
+});
+
 describe("isAtsClean", () => {
   it("is true when only warnings and info are present", () => {
     expect(

@@ -8,6 +8,13 @@
 // catches known-hostile constructs before you spend a compile; that one is
 // authoritative.
 //
+// It also catches a narrow class of COMPILE-VALIDITY errors, because a résumé
+// that does not compile is a worse failure than one that extracts poorly — it
+// does not exist, and the user otherwise sees only a bare "—" with no reason.
+// Only hard pdflatex errors qualify (unescaped &, unbalanced braces), both
+// measured in the profile-input-kind eval fixture; warnings and style are the
+// compiler's business, not this lint's.
+//
 // Every rule here is grounded in a measurement rather than folklore. Notably
 // ABSENT, because they were measured NOT to be problems in this codebase's
 // layout: ligatures (glyphtounicode already handles them), math bullets in
@@ -83,6 +90,46 @@ function stripComments(latex: string): string {
   return latex.replace(/(?<!\\)%[^\n]*/g, "");
 }
 
+/**
+ * Environments in which `&` is a legitimate alignment character. A line inside
+ * any of these is exempt from the unescaped-ampersand rule.
+ */
+const ALIGNMENT_ENV_NAMES = [
+  "tabular\\*?",
+  "tabularx",
+  "tabulary",
+  "longtable",
+  "array",
+  "align\\*?",
+  "aligned",
+  "alignat\\*?",
+  "flalign\\*?",
+  "eqnarray\\*?",
+  "matrix",
+  "[bpvBV]matrix",
+  "smallmatrix",
+  "cases",
+  "split",
+  "gather\\*?",
+  "multline\\*?",
+].join("|");
+
+const ALIGNMENT_ENV_RE = new RegExp(
+  `\\\\(begin|end)\\s*\\{(?:${ALIGNMENT_ENV_NAMES})\\}`,
+  "g",
+);
+
+/**
+ * Verbatim-ish spans, where braces and ampersands are literal text rather than
+ * syntax. Replaced with equivalent-length blanks so offsets stay usable.
+ */
+const VERBATIM_RE =
+  /\\begin\{verbatim\*?\}[\s\S]*?\\end\{verbatim\*?\}|\\verb\*?([^a-zA-Z\s])[\s\S]*?\1/g;
+
+function blankVerbatim(latex: string): string {
+  return latex.replace(VERBATIM_RE, (m) => m.replace(/[^\n]/g, " "));
+}
+
 function firstMatchLine(latex: string, re: RegExp): string | undefined {
   const m = re.exec(latex);
   if (!m) return undefined;
@@ -95,6 +142,100 @@ function firstMatchLine(latex: string, re: RegExp): string | undefined {
 }
 
 /**
+ * Find a bare `&` that sits inside a brace group on a line where no alignment
+ * environment is open.
+ *
+ * MEASURED: the profile-input-kind fixture emitted
+ * `{Founder & Data Analyst}{Remote}` as an argument to \resumeSubheading and
+ * failed to compile three runs in a row. \resumeSubheading *expands* to a
+ * tabular*, but argument text is tokenized at the call site, where no alignment
+ * is in scope, so the `&` is a hard error there.
+ *
+ * Deliberately conservative — it only looks inside brace groups. A bare `&` in
+ * running paragraph text is equally fatal, but flagging that would require
+ * knowing every alignment-providing macro in the preamble, so it is left to the
+ * compiler rather than risking a false "your résumé won't compile".
+ */
+function findUnescapedAmpersand(
+  src: string,
+): { line: number; text: string } | undefined {
+  const lines = src.split("\n");
+  let envDepth = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const depthBefore = envDepth;
+    ALIGNMENT_ENV_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = ALIGNMENT_ENV_RE.exec(line))) {
+      if (m[1] === "begin") envDepth++;
+      else envDepth = Math.max(0, envDepth - 1);
+    }
+    // Skip the whole line if an alignment env was open at any point on it.
+    if (depthBefore > 0 || envDepth > 0) continue;
+
+    let braceDepth = 0;
+    for (let j = 0; j < line.length; j++) {
+      const ch = line[j];
+      if (ch === "\\") {
+        j++; // skip the escaped char: \& \{ \} are all literal
+        continue;
+      }
+      if (ch === "{") braceDepth++;
+      else if (ch === "}") braceDepth = Math.max(0, braceDepth - 1);
+      else if (ch === "&" && braceDepth > 0) {
+        return { line: i + 1, text: line.trim().slice(0, 160) };
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Track brace depth across the document, ignoring escaped braces, comments and
+ * verbatim spans.
+ *
+ * MEASURED: the same failing fixture closed a group it had already closed —
+ * `\small{\item{ ... }}` followed by a stray `}}` — which pdflatex reports as
+ * "Too many }'s" and refuses to typeset.
+ */
+function findBraceImbalance(
+  src: string,
+): { kind: "negative" | "unclosed"; depth: number; text?: string } | undefined {
+  let depth = 0;
+  let line = 1;
+  let lineStart = 0;
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (ch === "\n") {
+      line++;
+      lineStart = i + 1;
+      continue;
+    }
+    if (ch === "\\") {
+      i++; // escaped char, including \{ and \}
+      continue;
+    }
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth < 0) {
+        const end = src.indexOf("\n", i);
+        return {
+          kind: "negative",
+          depth,
+          text: src
+            .slice(lineStart, end === -1 ? undefined : end)
+            .trim()
+            .slice(0, 160),
+        };
+      }
+    }
+  }
+  if (depth > 0) return { kind: "unclosed", depth };
+  return undefined;
+}
+
+/**
  * Analyze LaTeX source for constructs that break résumé parsers.
  * Findings are ordered critical → warning → info.
  */
@@ -102,6 +243,46 @@ export function lintLatexForAts(latex: string): AtsFinding[] {
   if (!latex?.trim()) return [];
   const src = stripComments(latex);
   const out: AtsFinding[] = [];
+
+  // --- critical: source that will not compile at all ----------------------
+  // A résumé that fails to compile is a worse outcome than one that extracts
+  // poorly: it does not exist. Both rules below are hard pdflatex errors that
+  // were observed as bare "—" results in the eval harness.
+  const codeSrc = blankVerbatim(src);
+
+  const amp = findUnescapedAmpersand(codeSrc);
+  if (amp) {
+    out.push({
+      id: "unescaped-ampersand",
+      severity: "critical",
+      title: "Unescaped & in a macro argument",
+      detail:
+        '& is LaTeX\'s alignment character. Outside a tabular or align row it is a hard error — pdflatex aborts with "Misplaced alignment tab character &" and produces no PDF. A macro that expands to a tabular does not help: its arguments are read at the call site, where no alignment is in scope.',
+      fix: 'Escape it as \\& (e.g. {Founder \\& Data Analyst}), or write "and".',
+      evidence: amp.text,
+    });
+  }
+
+  const braces = findBraceImbalance(codeSrc);
+  if (braces) {
+    out.push({
+      id: "unbalanced-braces",
+      severity: "critical",
+      title:
+        braces.kind === "negative"
+          ? "Extra closing brace"
+          : "Unclosed brace group",
+      detail:
+        braces.kind === "negative"
+          ? 'A } closes a group that was never opened. pdflatex reports "Too many }\'s" and stops — no PDF is produced.'
+          : `${braces.depth} brace group${braces.depth > 1 ? "s are" : " is"} still open at the end of the document. pdflatex reaches \\end{document} with an unfinished group and aborts with "Missing } inserted".`,
+      fix:
+        braces.kind === "negative"
+          ? "Remove the extra closing brace."
+          : "Add the missing closing brace(s) to the unfinished group.",
+      evidence: braces.text,
+    });
+  }
 
   // --- critical: multi-column layouts -------------------------------------
   // The single best-established ATS failure: a parser reads the text layer

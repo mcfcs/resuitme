@@ -38,6 +38,10 @@ export function layoutContractBlock(template: BuiltinTemplate): string {
   lines.push(
     "Do not add, rename, split or reorder sections. Do not invent sections outside the lists above — fold such content into a listed section or omit it.",
     "Reordering for relevance applies ONLY to items and bullets WITHIN a section, never to the section sequence.",
+    // Both failures below were produced by the model and broke compilation
+    // outright, which surfaces only as a blank score in the eval.
+    "ESCAPING: inside macro arguments, write & as \\& and % as \\% (e.g. {Founder \\& Data Analyst}). A bare & or % there is a compile error, not a typo.",
+    "BRACES: every macro argument must have balanced braces. Do not emit a stray closing }} after a completed \\small{\\item{...}} group.",
   );
 
   if (template.macros.length) {

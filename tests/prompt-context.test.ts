@@ -200,6 +200,21 @@ describe("COMPOSE_TARGET_FRACTION matches the prompts", () => {
       expect(src).toContain(`TARGET ~${pct}% of the budget`);
     });
   }
+
+  // Checking only the prose left the real drift invisible: /api/build
+  // interpolated a hardcoded 0.95 while its prompt said 90%, so the model was
+  // handed two different targets in one message. Assert on the ROUTES too.
+  for (const route of ["build", "tailor"]) {
+    it(`app/api/${route}/route.ts derives its target from the constant`, () => {
+      const src = readFileSync(
+        fileURLToPath(new URL(`../app/api/${route}/route.ts`, import.meta.url)),
+        "utf8",
+      );
+      expect(src).toContain("COMPOSE_TARGET_FRACTION");
+      // A literal fraction next to `budget *` is the shape the bug took.
+      expect(src).not.toMatch(/budget \* 0\.\d+/);
+    });
+  }
 });
 
 describe("filterMustInclude — disqualifying requirements", () => {
