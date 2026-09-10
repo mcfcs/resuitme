@@ -132,7 +132,7 @@ Note that `navigator.clipboard` is unavailable on plain-HTTP origins in some mob
 1. Paste your LaTeX résumé and the target job description.
 2. **Analyze résumé** — the model scores fit (0–100) and reports strengths, gaps, missing keywords, and suggested edits.
 3. **The honesty check** — for every keyword the JD wants but your résumé lacks, mark _I have this_ / _Partial_ / _I don't_. Anything marked "I don't" is a hard constraint: it will never appear in the output, even implicitly.
-4. **Tailor** — the model rewrites the LaTeX in place (preserving your preamble and packages), the draft is compiled to count its real page count, and over-long drafts go through a verify-and-trim loop until they fit one page.
+4. **Tailor** — the model rewrites the LaTeX in place (preserving your preamble and packages), the draft is compiled to count its real page count, and over-long drafts go through a verify-and-trim loop until they fit one page. If the result leaves the page noticeably underfilled, one expand pass adds back real material — every addition quote-checked against your own profile, so nothing can be invented to fill space. Every figure in the finished résumé is then checked against your profile too: a percentage or metric you never supplied is treated as fabrication, and the draft is regenerated without it.
 5. **The ATS check** — the finished PDF is scanned and scored on what a résumé parser actually extracts from it (see below).
 6. Copy the LaTeX, download `.tex`, or open it straight in Overleaf for a PDF preview.
 
@@ -249,7 +249,7 @@ CI (`.github/workflows/ci.yml`) runs typecheck, lint and `vitest run` on Node 22
 
 ### Tests
 
-`npm test` covers the pure functions the whole app leans on: the visible-text extraction and one-page budget maths (`lib/latex.ts`), the cut sizing (`lib/render.ts`), the model-output parsers (`lib/llm.ts`), the one-page fitting loop (`lib/trim-loop.ts`, with a mocked page-count check), the rate limiter, and profile export/import.
+`npm test` covers the pure functions the whole app leans on: the visible-text extraction and one-page budget maths (`lib/latex.ts`), the cut sizing (`lib/render.ts`), the model-output parsers (`lib/llm.ts`), the one-page fitting loop (`lib/trim-loop.ts`, with a mocked page-count check, including the expand pass and every case in which it must revert), the quote-grounding check that makes invented additions impossible (`lib/ats/quote-check.ts`), the numeric grounding that catches fabricated metrics (`lib/ats/number-check.ts`), the rate limiter, and profile export/import.
 
 ### Evaluating and comparing models
 
@@ -311,19 +311,63 @@ The two fixes were both prompt bugs the eval made visible:
 
 - **Underfilled pages.** The length section gave five separate instructions to
   cut and none saying a half-empty page is also wrong, so a cautious model
-  stopped early — correctly, by the rules it had. Length is now a band
-  (85–100% of budget) with an explicit "go back and add more" check. The mean
-  barely moved, but the ceiling did: the best cases now reach 84–89%, and the
-  remaining low outliers are fixtures with genuinely thin source material.
+  stopped early — correctly, by the rules it had. Fixing this turned out to be
+  the hard problem; see **Page fill** below.
 - **Placeholder leakage.** One fixture leaked `Full Name` and
   `email@example.com`. The fixture's profile contains neither, so the model had
   nothing to substitute and its only alternative was inventing a name — which
   the honesty contract forbids. The prompt now says to omit the element
   entirely. Verified: 2 leaks → 0.
 
-**Page fill remains the open issue.** A 63% mean still means real experience is
-being left unused on some inputs. It is a content-selection problem rather than
-a formatting one, and worth another pass.
+### Page fill
+
+The 63% mean looked like a third of the page being wasted. Investigating it
+produced two corrections and one negative result worth recording.
+
+**Part of it was the metric.** Three fixtures are at or above their physical
+source ceiling — the candidate's material simply cannot fill a page without
+invention. Counting those as failures made the honesty contract look like a bug.
+Fixtures now declare a `sourceCeiling`, and fill is reported both raw and
+against what was actually achievable.
+
+**Prompt-level fill pressure does not work.** Telling the model to fill the page
+— an explicit floor, a target band — was implemented and measured: movable-case
+fill rose 74% → 84%, and one-page dropped to 9/10, ATS to 90, and honesty
+violations went 0 → 3. The sparsest fixture invented _"tokenization for
+morphologically rich languages"_ to satisfy the floor. That change was reverted.
+The lesson is that a prompt can only ask, and a model under length pressure can
+always comply by making something up.
+
+**What works is making padding impossible.** After the trim loop settles, a
+single expand pass asks a planner what real material is still unused. Every
+proposed addition must carry a **verbatim quote from the candidate's own
+profile**, which the server checks; anything unquotable is discarded before it
+reaches the generator. Observed in practice: asked to expand a résumé against an
+ML job description, the planner proposed adding Spark, Hadoop, Hive, HBase and
+Pig — none of which the candidate has — and all five were dropped while three
+genuine additions were kept.
+
+The expanded draft is accepted only if it still fits one page and actually grew;
+otherwise the pipeline reverts to the already-good draft, so the pass is
+upside-only. See [evals/README.md](evals/README.md) for the measurements.
+
+### Invented figures
+
+Chasing the fill problem surfaced a worse one. The honesty contract catches a
+disclaimed **keyword**, but nothing caught a fabricated **quantity** attached to
+real work: from a profile saying only "dynamic pricing strategies to maximize
+margins and inventory turnover", the model produced _"boosting inventory
+turnover by 15%"_. Every other check passed that résumé.
+
+Figures in the finished draft are now verified against your own material the
+same way quotes are, and an unsupported one triggers a single regeneration that
+restates the achievement without the number. Precision may be dropped (`0.9514`
+→ `0.951` is honest) but never added.
+
+**Known limit, stated plainly:** this catches quantities. A fabricated
+_qualitative_ claim — "led a team", "at scale" — is not detectable this way and
+remains an open problem for the initial build; the expand pass is already immune
+because it must quote its source.
 
 `--model` overrides `OLLAMA_MODEL` (or `ANTHROPIC_MODEL`) for a single run, so two models can be compared without editing `.env.local`. Comparing across model _families_ usually also needs `--think off`, because `OLLAMA_THINK` stays set from your env and a non-reasoning model rejects the `think` field with HTTP 400. (`--think off` unsets the variable; it never sends `think: false` — see the gpt-oss warning above.)
 
