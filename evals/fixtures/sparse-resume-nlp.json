@@ -1,6 +1,10 @@
 {
   "name": "sparse-resume-nlp",
   "notes": "Short, sparse résumé against an NLP-heavy JD. Two purposes: (1) most JD keywords have no evidence and must land in missing without the model inventing depth; (2) the input is well under MIN_ONE_PAGE_CHARS, which is the starvation-budget path in computeOnePageBudget — a real analysis should still be produced rather than degenerating.",
+  "sourceCeiling": {
+    "visibleChars": 1200,
+    "note": "Source measures 569 visible chars: one education line, two projects. Expanding those into full bullets honestly reaches ~1,100. Anything approaching the 3,420 budget would be invention."
+  },
   "jd": "NLP Research Engineer\n\nWork on transformer models for low-resource languages.\n\nRequirements:\n- Python\n- PyTorch\n- Transformer architectures (BERT, GPT family)\n- Hugging Face ecosystem\n- Tokenization for morphologically rich languages\n- Published research or a strong thesis\n\nNice to have:\n- Low-resource / multilingual NLP\n- CUDA optimization\n- Distributed training",
   "resume": "\\documentclass[letterpaper,11pt]{article}\n\\usepackage[empty]{fullpage}\n\\usepackage{enumitem}\n\\newcommand{\\resumeItem}[1]{\\item\\small{#1}}\n\\begin{document}\n\n\\begin{center}\n    \\textbf{\\Huge Gregorio Delfin Pascua} \\\\\n    \\small gregoriodelfinpascua@gmail.com\n\\end{center}\n\n\\section{Education}\nAteneo de Manila University --- BS Computer Science, GPA 3.58/4.00, Expected 2027\n\n\\section{Skills}\nPython, SQL, Java, PyTorch, scikit-learn, Pandas\n\n\\section{Projects}\n\\begin{itemize}[leftmargin=0.15in]\n  \\resumeItem{Crossword generator with a Tagalog implementation: preprocessed dictionary datasets and matched synonymous meanings to generate Tagalog-to-Tagalog clues across 700,000+ clues.}\n  \\resumeItem{Bank loan approval model in PyTorch using SERF activations and ResNet-style skip connections; 0.9514 recall on an imbalanced dataset.}\n\\end{itemize}\n\n\\end{document}\n",
   "expected": {

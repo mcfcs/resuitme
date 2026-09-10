@@ -1,6 +1,10 @@
 {
   "name": "leadership-implicit",
   "notes": "Second implicit-evidence case, on a non-technical axis. The résumé says 'Led a 5-member team' and '1st Place, Team Leader' but never uses the words 'leadership', 'stakeholder management' or 'cross-functional'. Team leadership is genuinely demonstrated and should be present; the abstract HR nouns the JD uses should not be treated as absent just because the literal token is missing.",
+  "sourceCeiling": {
+    "visibleChars": 3865,
+    "note": "Full sampleresume.tex. Source exceeds the one-page budget, so the budget is the binding constraint, not the material."
+  },
   "jd": "Technical Program Manager (Early Career)\n\nYou will coordinate delivery across engineering teams and communicate with non-technical stakeholders.\n\nRequirements:\n- Team leadership\n- Stakeholder communication\n- Project coordination and scheduling\n- Comfort reading technical designs\n- Budget ownership\n\nNice to have:\n- Jira or equivalent tracker\n- Agile / Scrum certification\n- Experience in public sector projects",
   "resumeFile": "sampleresume.tex",
   "expected": {

@@ -32,6 +32,23 @@ export type GenerationResult = {
   chars?: number;
   budget?: number;
   /**
+   * The most this fixture's source material can honestly support, declared in
+   * the fixture rather than inferred. Inference is wrong in both directions:
+   * résumé prose legitimately expands from compressed source, and for a rich
+   * fixture the source happens to exceed the budget only by accident.
+   */
+  sourceCeiling?: number;
+  /** chars / budget. Kept because it is the number the app actually targets. */
+  fill?: number;
+  /**
+   * chars / min(budget, sourceCeiling) — how much of what was ACHIEVABLE was
+   * used. A fixture that used everything it had scores 100% here even when its
+   * raw fill is 31%, which is the honest reading.
+   */
+  effectiveFill?: number;
+  /** True when the source, not the budget, is the binding constraint. */
+  ceilingBound?: boolean;
+  /**
    * Fraction of the analyzer's must_include picks that survived into the
    * output. THE headline metric — it measures whether wiring must_include
    * through to the generator actually changed anything.
@@ -96,6 +113,8 @@ export async function evaluateGeneration(
   disclaimedKeywords: string[],
   deps: BuildDeps,
   templateId?: string,
+  /** Declared in the fixture. Absent means the budget always binds. */
+  sourceCeiling?: number,
 ): Promise<GenerationResult> {
   const started = Date.now();
   const template: BuiltinTemplate = getTemplate(templateId);
@@ -148,11 +167,23 @@ export async function evaluateGeneration(
       .filter((f) => f.severity === "critical")
       .map((f) => f.title);
 
+    // Fill against what was ACHIEVABLE, not merely against the budget. A
+    // fixture whose source cannot fill a page is not underperforming when it
+    // does not.
+    const achievable = Math.min(
+      budget,
+      sourceCeiling ?? Number.POSITIVE_INFINITY,
+    );
+
     return {
       name,
       ok: true,
       ms: Date.now() - started,
       atsScore: scan?.score,
+      sourceCeiling,
+      fill: visible / budget,
+      effectiveFill: visible / achievable,
+      ceilingBound: achievable < budget,
       pages: result.pages,
       iterations: result.iterations,
       chars: visible,
@@ -189,7 +220,7 @@ export function generationReport(
   lines.push(`### Generation eval: \`${label}\``);
   lines.push("");
   lines.push(
-    "| Case | ATS | Pages | must_include | Honesty | Placeholders | Trims | Chars/Budget | Time |",
+    "| Case | ATS | Pages | must_include | Honesty | Placeholders | Trims | Fill | Time |",
   );
   lines.push("| --- | --- | --- | --- | --- | --- | --- | --- | --- |");
 
@@ -207,7 +238,7 @@ export function generationReport(
     lines.push(
       `| ${r.name} | ${r.atsScore ?? "—"} | ${r.pages ?? "—"} ` +
         `| ${pct(r.mustIncludeCoverage ?? 0)} | ${honesty} | ${leaks} ` +
-        `| ${r.iterations} | ${r.chars}/${r.budget} | ${secs(r.ms)} |`,
+        `| ${r.iterations} | ${fillCell(r)} | ${secs(r.ms)} |`,
     );
   }
 
@@ -216,14 +247,45 @@ export function generationReport(
     const avg = (pick: (r: GenerationResult) => number) =>
       ok.reduce((s, r) => s + pick(r), 0) / ok.length;
     const onePage = ok.filter((r) => r.pages === 1).length;
+    const movable = ok.filter((r) => !r.ceilingBound);
     lines.push(
       `| **mean** | ${Math.round(avg((r) => r.atsScore ?? 0))} ` +
         `| ${onePage}/${ok.length} at 1pp ` +
         `| ${pct(avg((r) => r.mustIncludeCoverage ?? 0))} ` +
         `| ${results.reduce((s, r) => s + (r.honestyViolations?.length ?? 0), 0)} total ` +
         `| ${results.reduce((s, r) => s + (r.placeholderLeaks?.length ?? 0), 0)} total ` +
-        `| ${avg((r) => r.iterations ?? 0).toFixed(1)} | — | ${secs(avg((r) => r.ms))} |`,
+        `| ${avg((r) => r.iterations ?? 0).toFixed(1)} ` +
+        `| ${movable.length ? pct(movable.reduce((s, r) => s + (r.fill ?? 0), 0) / movable.length) : "—"} (${movable.length} movable) ` +
+        `/ ${pct(avg((r) => r.effectiveFill ?? 0))} eff ` +
+        `| ${secs(avg((r) => r.ms))} |`,
     );
   }
+
+  if (ok.some((r) => r.ceilingBound)) {
+    lines.push("");
+    lines.push(
+      "† source-ceiling-bound: the fixture's material cannot fill the budget, so raw fill understates it. Fill is shown as raw (effective).",
+    );
+  }
+
+  // A sparse fixture suddenly filling the page is the signature of fabrication
+  // under fill pressure — the exact failure a prompt-level floor produced when
+  // it was measured. Flag it loudly rather than letting it read as a win.
+  const suspicious = ok.filter(
+    (r) => r.ceilingBound && (r.effectiveFill ?? 0) > 1.1,
+  );
+  for (const r of suspicious) {
+    lines.push(
+      `⚠ **${r.name}** exceeded its declared source ceiling by ${pct((r.effectiveFill ?? 1) - 1)} — check for invented content.`,
+    );
+  }
+
   return lines.join("\n");
+}
+
+/** Raw fill, with the effective figure alongside when the source binds. */
+function fillCell(r: GenerationResult): string {
+  const raw = pct(r.fill ?? 0);
+  if (!r.ceilingBound) return raw;
+  return `${raw} (${pct(r.effectiveFill ?? 0)})†`;
 }

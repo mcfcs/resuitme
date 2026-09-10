@@ -46,6 +46,12 @@ type Fixture = {
   /** Path relative to the repo root, e.g. "sampleresume.tex". */
   resumeFile?: string;
   inputKind?: "resume" | "profile";
+  /**
+   * The most this fixture's source can honestly support. DECLARED, not
+   * inferred: résumé prose legitimately expands from compressed source, so a
+   * measured source length is a floor on the ceiling, not the ceiling.
+   */
+  sourceCeiling?: { visibleChars: number; note?: string };
   expected: Buckets;
   /** Terms the model must not CLAIM the candidate has. See findViolations. */
   mustNotAppear: string[];

@@ -1,6 +1,10 @@
 {
   "name": "ml-engineer-strong",
   "notes": "Baseline strong-fit case against the real sampleresume.tex. PyTorch, imbalanced classification and pandas/numpy are explicit; Kubernetes and Go appear nowhere. Guards against both over-crediting (claiming k8s) and under-crediting (burying PyTorch).",
+  "sourceCeiling": {
+    "visibleChars": 3865,
+    "note": "Full sampleresume.tex. Source exceeds the one-page budget, so the budget is the binding constraint, not the material."
+  },
   "jd": "Machine Learning Engineer (New Grad)\n\nYou will train and evaluate models on messy real-world data and ship them into production services.\n\nRequirements:\n- Python\n- PyTorch or TensorFlow\n- Experience with class-imbalanced datasets and appropriate metrics (recall, PR-AUC)\n- pandas / NumPy\n- SQL\n\nNice to have:\n- Apache Spark\n- Kubernetes\n- Go",
   "resumeFile": "sampleresume.tex",
   "expected": {

@@ -89,3 +89,80 @@ describe("generationReport", () => {
     expect(out).toContain("ERROR");
   });
 });
+
+describe("generationReport — fill against the source ceiling", () => {
+  const base = {
+    name: "rich",
+    ok: true as const,
+    ms: 1000,
+    atsScore: 100,
+    pages: 1,
+    iterations: 1,
+    chars: 2500,
+    budget: 3420,
+    fill: 2500 / 3420,
+    effectiveFill: 2500 / 3420,
+    ceilingBound: false,
+    mustIncludeCoverage: 1,
+    mustIncludeMissed: [],
+    honestyViolations: [],
+    placeholderLeaks: [],
+    criticalFindings: [],
+  };
+
+  // A fixture whose source cannot fill the page: 1059 chars of a 1200 ceiling.
+  const sparse = {
+    ...base,
+    name: "sparse",
+    chars: 1059,
+    fill: 1059 / 3420,
+    effectiveFill: 1059 / 1200,
+    sourceCeiling: 1200,
+    ceilingBound: true,
+  };
+
+  it("shows raw fill for a case the budget binds", () => {
+    expect(generationReport([base], "m")).toContain("| 73% |");
+  });
+
+  it("shows raw and effective for a ceiling-bound case", () => {
+    const out = generationReport([sparse], "m");
+    // 31% of budget, but 88% of what the source could support.
+    expect(out).toContain("31% (88%)†");
+  });
+
+  it("footnotes the dagger only when a ceiling-bound case exists", () => {
+    expect(generationReport([sparse], "m")).toContain("† source-ceiling-bound");
+    expect(generationReport([base], "m")).not.toContain("† source-ceiling");
+  });
+
+  it("means raw fill over MOVABLE cases only, with the count stated", () => {
+    // Averaging a ceiling-bound 31% into the headline is what made the old
+    // number misleading; the denominator must be visible.
+    const out = generationReport([base, sparse], "m");
+    expect(out).toContain("73% (1 movable)");
+  });
+
+  it("reports effective fill across all cases alongside it", () => {
+    const out = generationReport([base, sparse], "m");
+    expect(out).toMatch(/eff/);
+  });
+
+  it("flags a ceiling-bound case that exceeded its declared ceiling", () => {
+    // The signature of fabrication under fill pressure — measured once, and
+    // the reason this tripwire exists.
+    const fabricating = { ...sparse, chars: 1500, effectiveFill: 1500 / 1200 };
+    const out = generationReport([fabricating], "m");
+    expect(out).toMatch(/exceeded its declared source ceiling/);
+    expect(out).toContain("sparse");
+  });
+
+  it("does not flag a ceiling-bound case within tolerance", () => {
+    const fine = { ...sparse, chars: 1250, effectiveFill: 1250 / 1200 };
+    expect(generationReport([fine], "m")).not.toMatch(/exceeded its declared/);
+  });
+
+  it("shows an em dash for movable fill when every case is ceiling-bound", () => {
+    expect(generationReport([sparse], "m")).toContain("— (0 movable)");
+  });
+});

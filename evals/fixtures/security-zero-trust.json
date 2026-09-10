@@ -1,6 +1,10 @@
 {
   "name": "security-zero-trust",
   "notes": "Narrow, deep evidence: the case-competition bullet names Zero Trust and NIST SP 800-207 explicitly, but it was a design proposal, not operational security work. A good analyzer credits the named frameworks while keeping hands-on operational security (pentesting, SIEM, incident response) in missing. Tests that the model does not over-generalise one strong bullet into a whole security background.",
+  "sourceCeiling": {
+    "visibleChars": 3865,
+    "note": "Full sampleresume.tex. Source exceeds the one-page budget, so the budget is the binding constraint, not the material."
+  },
   "jd": "Security Engineer I\n\nSupport our zero-trust rollout and security architecture reviews.\n\nRequirements:\n- Zero Trust architecture concepts\n- Familiarity with NIST security frameworks\n- Network segmentation\n- Python scripting\n\nNice to have:\n- SIEM tooling (Splunk, Elastic)\n- Penetration testing\n- Incident response experience\n- Security certifications (Security+, CISSP)",
   "resumeFile": "sampleresume.tex",
   "expected": {

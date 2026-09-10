@@ -1,6 +1,10 @@
 {
   "name": "fullstack-react-flask",
   "notes": "Strong fit driven by the aCount project: React, Flask, PostgreSQL and OAuth 2.0 are all explicit with real depth. TypeScript and GraphQL appear nowhere and must not be credited.",
+  "sourceCeiling": {
+    "visibleChars": 3865,
+    "note": "Full sampleresume.tex. Source exceeds the one-page budget, so the budget is the binding constraint, not the material."
+  },
   "jd": "Full-Stack Engineer\n\nYou will own features end to end on a payments-adjacent product.\n\nRequirements:\n- React\n- A Python web framework (Flask or Django)\n- PostgreSQL\n- REST API design\n- OAuth / third-party API integration\n\nNice to have:\n- TypeScript\n- GraphQL\n- Redis",
   "resumeFile": "sampleresume.tex",
   "expected": {

@@ -1,6 +1,10 @@
 {
   "name": "mismatch-senior-devops",
   "notes": "Fundamental mismatch: a senior infrastructure role against a student résumé with no infra experience. Per the scoring rubric this should land low (<35 is 'wrong domain/level/stack'). The point of the case is that almost everything belongs in missing and the model must not manufacture credit — nor propose fabricated duration claims like '8+ years'.",
+  "sourceCeiling": {
+    "visibleChars": 3865,
+    "note": "Full sampleresume.tex. Source exceeds the one-page budget, so the budget is the binding constraint, not the material."
+  },
   "jd": "Senior Site Reliability Engineer\n\n8+ years operating production infrastructure at scale. You will own our Kubernetes fleet and on-call rotation.\n\nRequirements:\n- Kubernetes at production scale\n- Terraform / infrastructure as code\n- Go\n- Prometheus and Grafana observability\n- Incident command and on-call leadership\n- Linux systems administration",
   "resumeFile": "sampleresume.tex",
   "expected": {

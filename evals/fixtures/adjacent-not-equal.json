@@ -1,6 +1,10 @@
 {
   "name": "adjacent-not-equal",
   "notes": "Trap case for the partial bucket. The JD asks for technologies that are adjacent to, but not the same as, what the résumé shows: the candidate has scikit-learn (not XGBoost), Matplotlib/Tableau (not Power BI), and Google Cloud (not Azure). A model that treats adjacency as equivalence over-credits; one that demands exact string matches under-credits. Either failure is visible in the per-bucket scores.",
+  "sourceCeiling": {
+    "visibleChars": 3865,
+    "note": "Full sampleresume.tex. Source exceeds the one-page budget, so the budget is the binding constraint, not the material."
+  },
   "jd": "Business Intelligence Analyst\n\nRequirements:\n- SQL\n- Python\n- Gradient boosting models (XGBoost or LightGBM)\n- Power BI dashboards\n- Azure data services\n- Data visualization and stakeholder reporting",
   "resumeFile": "sampleresume.tex",
   "expected": {
