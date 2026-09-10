@@ -11,8 +11,9 @@
 
 import { visibleChars } from "@/lib/latex";
 import { getTemplate, type BuiltinTemplate } from "@/lib/templates";
-import { runTrimLoop } from "@/lib/trim-loop";
+import { runFitLoop } from "@/lib/trim-loop";
 import { lintLatexForAts } from "@/lib/ats/source-lint";
+import { findUngroundedNumbers } from "@/lib/ats/number-check";
 import { scanPdfBytes } from "@/lib/ats/pdf-scan";
 import { computeBuildBudget } from "@/lib/latex";
 import type { Analysis } from "@/lib/types";
@@ -61,6 +62,12 @@ export type GenerationResult = {
   placeholderLeaks?: string[];
   /** Critical findings from the static lint on the generated source. */
   criticalFindings?: string[];
+  /** Figures in the output that the candidate's material does not support. */
+  inventedNumbers?: string[];
+  /** 1 when the expand pass ran, 0 when the draft was already in band. */
+  expandPasses?: number;
+  /** True when an expansion was produced but rejected as a regression. */
+  expandReverted?: boolean;
 };
 
 /** Loose containment test, tolerant of the model rewording a pick's phrasing. */
@@ -88,9 +95,52 @@ export function mentions(haystack: string, needle: string): boolean {
   return hits / words.length >= 0.6;
 }
 
+/**
+ * Honesty matching is NOT the same problem as must_include matching.
+ *
+ * A must_include miss is cosmetic, so `mentions` is deliberately loose. An
+ * honesty violation is an accusation that the résumé claims a skill the
+ * candidate disclaimed, so a false positive is worse than a miss.
+ *
+ * Single-letter keywords are the failure case: the analyzer emits "R" and "C"
+ * as real skills, and a bare token test then fires on any stray capital in the
+ * extracted PDF text — a middle initial, a section letter, a mis-transcribed
+ * glyph. Measured: "R" was reported against a résumé that never mentions it.
+ * Such a keyword needs corroborating context to count.
+ */
+export function claimsDisclaimed(extracted: string, keyword: string): boolean {
+  const n = keyword.trim();
+  if (!n) return false;
+
+  // Multi-character keywords are unambiguous enough for the normal test.
+  if (n.replace(/[^a-z0-9+#]/gi, "").length > 1) return mentions(extracted, n);
+
+  // A one-letter skill only counts when it appears as a skill would: next to
+  // a language/skill cue, not floating alone.
+  const hay = extracted.toLowerCase();
+  const k = n.toLowerCase().replace(/[^a-z0-9+#]/g, "");
+  if (!k) return false;
+
+  // \b is unreliable next to "+"/"#" (c++, c#), so bound on explicit
+  // separators instead. The letter must sit inside a skill-ish clause.
+  const esc = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const B = `(?:^|[^a-z0-9+#])${esc}(?:$|[^a-z0-9+#])`;
+  const CUE = "languages?|skills?|proficient|programming|stack|tools?";
+  const TRAIL = "programming|language|statistical|scripting|developer";
+  const cue = new RegExp(
+    `(?:${CUE})[^.\\n]{0,80}${B}` + `|${B}[^.\\n]{0,60}(?:${TRAIL})`,
+    "i",
+  );
+  return cue.test(hay);
+}
+
 export type BuildDeps = {
   /** Calls /api/build's handler. */
-  build: (cuts: string[] | undefined, budget: number) => Promise<string>;
+  build: (
+    cuts: string[] | undefined,
+    budget: number,
+    additions?: string[],
+  ) => Promise<string>;
   /** Calls /api/tailor/verify's handler. */
   requestCuts: (
     latex: string,
@@ -99,6 +149,12 @@ export type BuildDeps = {
   ) => Promise<string[]>;
   /** Compiles LaTeX and returns the PDF bytes, or null. */
   compile: (latex: string) => Promise<Uint8Array | null>;
+  /** Calls /api/tailor/expand's handler. Returns quote-verified instructions. */
+  requestAdditions: (
+    latex: string,
+    chars: number,
+    shortBy: number,
+  ) => Promise<string[]>;
 };
 
 /**
@@ -115,6 +171,12 @@ export async function evaluateGeneration(
   templateId?: string,
   /** Declared in the fixture. Absent means the budget always binds. */
   sourceCeiling?: number,
+  /**
+   * The candidate's own material. Figures in the output that this does not
+   * support were invented. Absent skips the check rather than reporting
+   * everything as fabricated.
+   */
+  numericPool?: string,
 ): Promise<GenerationResult> {
   const started = Date.now();
   const template: BuiltinTemplate = getTemplate(templateId);
@@ -122,8 +184,8 @@ export async function evaluateGeneration(
   try {
     const { budget } = computeBuildBudget(undefined, template.targetChars);
 
-    const result = await runTrimLoop(budget, {
-      generate: (cuts) => deps.build(cuts, budget),
+    const result = await runFitLoop(budget, {
+      generate: (cuts, additions) => deps.build(cuts, budget, additions),
       checkPages: async (latex) => {
         const bytes = await deps.compile(latex);
         if (!bytes) {
@@ -137,6 +199,7 @@ export async function evaluateGeneration(
         };
       },
       requestCuts: deps.requestCuts,
+      requestAdditions: deps.requestAdditions,
     });
 
     const latex = result.latex;
@@ -157,7 +220,9 @@ export async function evaluateGeneration(
       : 1;
 
     // --- honesty ----------------------------------------------------------
-    const violations = disclaimedKeywords.filter((k) => mentions(extracted, k));
+    const violations = disclaimedKeywords.filter((k) =>
+      claimsDisclaimed(extracted, k),
+    );
 
     // --- placeholder leakage ----------------------------------------------
     const leaks = template.placeholders.filter((p) => latex.includes(p));
@@ -166,6 +231,14 @@ export async function evaluateGeneration(
     const critical = lintLatexForAts(latex)
       .filter((f) => f.severity === "critical")
       .map((f) => f.title);
+
+    // --- invented figures --------------------------------------------------
+    // Distinct from honesty violations, which only catch disclaimed KEYWORDS.
+    // A fabricated quantity attached to real work ("...by 15%") passes every
+    // other check here.
+    const inventedNumbers = numericPool
+      ? findUngroundedNumbers(latex, numericPool).map((c) => c.raw)
+      : [];
 
     // Fill against what was ACHIEVABLE, not merely against the budget. A
     // fixture whose source cannot fill a page is not underperforming when it
@@ -193,6 +266,9 @@ export async function evaluateGeneration(
       honestyViolations: violations,
       placeholderLeaks: leaks,
       criticalFindings: critical,
+      inventedNumbers,
+      expandPasses: result.expandPasses,
+      expandReverted: result.expandReverted,
     };
   } catch (e) {
     return {
@@ -220,13 +296,13 @@ export function generationReport(
   lines.push(`### Generation eval: \`${label}\``);
   lines.push("");
   lines.push(
-    "| Case | ATS | Pages | must_include | Honesty | Placeholders | Trims | Fill | Time |",
+    "| Case | ATS | Pages | must_include | Honesty | Figures | Placeholders | Trims | Fill | Time |",
   );
-  lines.push("| --- | --- | --- | --- | --- | --- | --- | --- | --- |");
+  lines.push("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |");
 
   for (const r of results) {
     if (!r.ok) {
-      lines.push(`| ${r.name} | — | — | — | — | — | — | — | ERROR |`);
+      lines.push(`| ${r.name} | — | — | — | — | — | — | — | — | ERROR |`);
       continue;
     }
     const honesty = r.honestyViolations?.length
@@ -235,9 +311,14 @@ export function generationReport(
     const leaks = r.placeholderLeaks?.length
       ? `**${r.placeholderLeaks.length}**`
       : "none";
+    // An invented figure is a separate failure from a disclaimed keyword: the
+    // claim is real, the number attached to it is not.
+    const figures = r.inventedNumbers?.length
+      ? `**${r.inventedNumbers.join(", ")}**`
+      : "clean";
     lines.push(
       `| ${r.name} | ${r.atsScore ?? "—"} | ${r.pages ?? "—"} ` +
-        `| ${pct(r.mustIncludeCoverage ?? 0)} | ${honesty} | ${leaks} ` +
+        `| ${pct(r.mustIncludeCoverage ?? 0)} | ${honesty} | ${figures} | ${leaks} ` +
         `| ${r.iterations} | ${fillCell(r)} | ${secs(r.ms)} |`,
     );
   }
@@ -253,6 +334,7 @@ export function generationReport(
         `| ${onePage}/${ok.length} at 1pp ` +
         `| ${pct(avg((r) => r.mustIncludeCoverage ?? 0))} ` +
         `| ${results.reduce((s, r) => s + (r.honestyViolations?.length ?? 0), 0)} total ` +
+        `| ${results.reduce((s, r) => s + (r.inventedNumbers?.length ?? 0), 0)} total ` +
         `| ${results.reduce((s, r) => s + (r.placeholderLeaks?.length ?? 0), 0)} total ` +
         `| ${avg((r) => r.iterations ?? 0).toFixed(1)} ` +
         `| ${movable.length ? pct(movable.reduce((s, r) => s + (r.fill ?? 0), 0) / movable.length) : "—"} (${movable.length} movable) ` +

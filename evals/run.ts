@@ -402,6 +402,7 @@ async function runGenerationSuite(
   const { POST: buildPost } = await import("../app/api/build/route");
   const { POST: verifyPost } = await import("../app/api/tailor/verify/route");
   const { POST: renderPost } = await import("../app/api/render/route");
+  const { POST: expandPost } = await import("../app/api/tailor/expand/route");
 
   // The route handlers are typed against NextRequest but at runtime only use
   // the standard Request surface (.json()), so a plain Request suffices.
@@ -447,7 +448,7 @@ async function runGenerationSuite(
       analysis,
       disclaimed,
       {
-        build: async (cuts, budget) => {
+        build: async (cuts, budget, additions) => {
           const { res, data } = await call(buildPost, {
             jobDescription: fx.jd,
             templateId,
@@ -455,6 +456,7 @@ async function runGenerationSuite(
             analysis,
             budget,
             cuts,
+            additions,
           });
           if (!res.ok) throw new Error(String(data.error ?? res.status));
           return data.latex as string;
@@ -470,6 +472,19 @@ async function runGenerationSuite(
           if (!res.ok || !Array.isArray(data.suggestedCuts)) return [];
           return data.suggestedCuts as string[];
         },
+        requestAdditions: async (latex, _chars, shortBy) => {
+          const { res, data } = await call(expandPost, {
+            latex,
+            jobDescription: fx.jd,
+            // The fixture's own material is the only legal source; the route
+            // verifies every quote against it.
+            profilePool: fx.resume,
+            shortBy,
+            analysis,
+          });
+          if (!res.ok || !Array.isArray(data.suggestedAdditions)) return [];
+          return data.suggestedAdditions as string[];
+        },
         compile: async (latex) => {
           const { res, data } = await call(renderPost, { latex });
           if (!res.ok || !data.compiled) return null;
@@ -479,6 +494,8 @@ async function runGenerationSuite(
         },
       },
       templateId,
+      fx.sourceCeiling?.visibleChars,
+      fx.resume,
     );
 
     process.stderr.write(r.ok ? `${(r.ms / 1000).toFixed(1)}s\n` : "FAILED\n");

@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { mentions, generationReport } from "@/evals/generation";
+import {
+  mentions,
+  claimsDisclaimed,
+  generationReport,
+} from "@/evals/generation";
 
 describe("mentions — word-boundary matching", () => {
   it("matches an exact term", () => {
@@ -63,7 +67,7 @@ describe("generationReport", () => {
   it("renders a markdown table with a mean row", () => {
     const out = generationReport([base], "test-model");
     expect(out).toContain("| Case | ATS | Pages |");
-    expect(out).toContain("| case-a | 98 | 1 | 100% | clean | none |");
+    expect(out).toContain("| case-a | 98 | 1 | 100% | clean | clean | none |");
     expect(out).toContain("**mean**");
   });
 
@@ -164,5 +168,48 @@ describe("generationReport — fill against the source ceiling", () => {
 
   it("shows an em dash for movable fill when every case is ceiling-bound", () => {
     expect(generationReport([sparse], "m")).toContain("— (0 movable)");
+  });
+});
+
+describe("claimsDisclaimed — single-letter skills", () => {
+  // The measured false positive: profile-input-kind was reported as claiming
+  // "R" on a résumé that never mentions it.
+  it("does not fire on a stray capital letter", () => {
+    expect(
+      claimsDisclaimed("Gregorio R. Pascua — Software Engineer", "R"),
+    ).toBe(false);
+  });
+
+  it("does not fire on a section letter or bullet glyph", () => {
+    expect(claimsDisclaimed("EXPERIENCE R Built a pipeline", "R")).toBe(false);
+  });
+
+  it("still catches a real claim in a skills list", () => {
+    expect(claimsDisclaimed("Languages: Python, R, SQL and Java", "R")).toBe(
+      true,
+    );
+  });
+
+  it("still catches a real claim stated as prose", () => {
+    expect(
+      claimsDisclaimed("Used R for statistical modelling of loan data", "R"),
+    ).toBe(true);
+  });
+
+  it("leaves multi-character keywords on the normal matcher", () => {
+    expect(
+      claimsDisclaimed(
+        "Deployed to Azure Data Services",
+        "azure data services",
+      ),
+    ).toBe(true);
+    expect(claimsDisclaimed("Deployed to AWS", "azure data services")).toBe(
+      false,
+    );
+  });
+
+  it("ignores an empty keyword", () => {
+    expect(claimsDisclaimed("anything at all", "")).toBe(false);
+    expect(claimsDisclaimed("anything at all", "   ")).toBe(false);
   });
 });
