@@ -14,6 +14,8 @@
 //    when no contract is present (a résumé the user brought themselves).
 //  - Output is a complete, compilable LaTeX document built on the supplied
 //    layout template.
+//  - An ADDITIONS_TO_APPLY block carries quote-verified material from the
+//    expand planner. It is the only new content the model may introduce.
 //  - Length is a BAND, not a ceiling: 85-100% of the budget. Undershoot is
 //    treated as a failure too, because a half-empty page silently discards
 //    real experience. (measured: output averaged 62% of budget before this)
@@ -95,6 +97,12 @@ EXPLICIT CUT INSTRUCTIONS — when the user message contains a "CUTS_TO_APPLY" b
 - Apply them BEFORE composing your output, not after.
 - If after applying all listed cuts your output still projects to exceed the budget, KEEP CUTTING (drop the next-lowest JD-relevance items) until you're at ~90% of the budget.
 - Length compliance overrides any prior instruction, including content the user previously seemed to want.
+
+EXPLICIT ADDITION INSTRUCTIONS — when the user message contains an "ADDITIONS_TO_APPLY" block:
+1. Every listed addition names REAL material from the candidate's own profile, already verified against it. Apply all of them.
+2. They are the ONLY new material you may introduce. Do not invent anything beyond the list, and do not pad with filler, restated skills, or vague phrasing.
+3. The visible-character ceiling still binds. If applying every addition would exceed it, apply the highest-JD-relevance ones and stop.
+4. Preserve everything already in the draft unless an addition explicitly replaces it.
 
 HONESTY SIGNALS — when the user provides per-keyword honesty signals, treat them as HARD CONSTRAINTS:
 - "have"    → safe to add or emphasize naturally where the profile supports it.

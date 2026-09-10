@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
-import { runTrimLoop, type TrimDeps, type TrimPhase } from "@/lib/trim-loop";
+import {
+  runTrimLoop,
+  runFitLoop,
+  type TrimDeps,
+  type ExpandDeps,
+  type TrimPhase,
+} from "@/lib/trim-loop";
 import type { PageCheck } from "@/lib/render";
 
 /** A successful compile reporting `pages`. */
@@ -263,5 +269,135 @@ describe("runTrimLoop — result shape", () => {
 
     expect(r.fits).toBe(false);
     expect(r.pages).toBe(3);
+  });
+});
+
+describe("runFitLoop — the expand pass", () => {
+  /** Deps for a draft that lands under the floor and can be expanded. */
+  function fitDeps(over: Partial<TrimDeps & ExpandDeps> = {}) {
+    return {
+      // 1000 chars against a 3420 budget = 29%, well under the 85% floor.
+      generate: vi.fn(async (_cuts?: string[], additions?: string[]) =>
+        additions?.length ? latexOf(3000) : latexOf(1000),
+      ),
+      checkPages: vi.fn(async () => measured(1)),
+      requestCuts: vi.fn(async () => []),
+      requestAdditions: vi.fn(async () => ["restore the Acme bullet"]),
+      ...over,
+    } as TrimDeps & ExpandDeps;
+  }
+
+  it("expands a draft that landed under the floor", async () => {
+    const d = fitDeps();
+    const r = await runFitLoop(3420, d);
+
+    expect(r.expandPasses).toBe(1);
+    expect(r.expandReverted).toBe(false);
+    expect(r.chars).toBe(3000);
+    expect(d.requestAdditions).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes the additions to generate, not the cuts slot", async () => {
+    const generate = vi.fn(async (_c?: string[], additions?: string[]) =>
+      additions?.length ? latexOf(3000) : latexOf(1000),
+    );
+    await runFitLoop(3420, fitDeps({ generate }));
+
+    expect(generate).toHaveBeenLastCalledWith(undefined, [
+      "restore the Acme bullet",
+    ]);
+  });
+
+  it("never calls the planner when the draft is already in band", async () => {
+    // 3200 of 3420 is 94% — nothing to do.
+    const d = fitDeps({ generate: vi.fn(async () => latexOf(3200)) });
+    const r = await runFitLoop(3420, d);
+
+    expect(d.requestAdditions).not.toHaveBeenCalled();
+    expect(r.expandPasses).toBe(0);
+    expect(r.chars).toBe(3200);
+  });
+
+  it("accepts the planner declining — a sparse profile keeps its short résumé", async () => {
+    // The honesty outcome: nothing real left to add, so nothing is added.
+    const d = fitDeps({ requestAdditions: vi.fn(async () => []) });
+    const r = await runFitLoop(3420, d);
+
+    expect(r.expandPasses).toBe(0);
+    expect(r.expandReverted).toBe(false);
+    expect(r.chars).toBe(1000);
+    expect(d.generate).toHaveBeenCalledTimes(1);
+  });
+
+  it("reverts when the expanded draft spills onto a second page", async () => {
+    const checkPages = vi
+      .fn<TrimDeps["checkPages"]>()
+      .mockResolvedValueOnce(measured(1)) // the trim loop's check
+      .mockResolvedValue(measured(2)); // the expanded candidate
+    const d = fitDeps({ checkPages });
+    const r = await runFitLoop(3420, d);
+
+    expect(r.expandReverted).toBe(true);
+    expect(r.chars).toBe(1000); // the accepted draft, untouched
+    expect(r.pages).toBe(1);
+  });
+
+  it("reverts when the expanded draft is not actually longer", async () => {
+    // Guards a planner that makes things worse rather than better.
+    const d = fitDeps({
+      generate: vi.fn(async (_c?: string[], additions?: string[]) =>
+        additions?.length ? latexOf(900) : latexOf(1000),
+      ),
+    });
+    const r = await runFitLoop(3420, d);
+
+    expect(r.expandReverted).toBe(true);
+    expect(r.chars).toBe(1000);
+  });
+
+  it("reverts when the expanded draft blows the ceiling", async () => {
+    const d = fitDeps({
+      generate: vi.fn(async (_c?: string[], additions?: string[]) =>
+        additions?.length ? latexOf(5000) : latexOf(1000),
+      ),
+      // Compile unavailable, so the char heuristic decides.
+      checkPages: vi.fn(async () => unmeasured()),
+    });
+    const r = await runFitLoop(3420, d);
+
+    expect(r.expandReverted).toBe(true);
+    expect(r.chars).toBe(1000);
+  });
+
+  it("never expands a draft the trim loop could not fix", async () => {
+    // Overflow is the hard failure; do not add content to a broken draft.
+    const d = fitDeps({
+      generate: vi.fn(async () => latexOf(9000)),
+      checkPages: vi.fn(async () => measured(3)),
+      requestCuts: vi.fn(async () => ["cut something"]),
+      maxPasses: 2,
+    } as Partial<TrimDeps & ExpandDeps>);
+    const r = await runFitLoop(3420, d);
+
+    expect(r.fits).toBe(false);
+    expect(d.requestAdditions).not.toHaveBeenCalled();
+    expect(r.expandPasses).toBe(0);
+  });
+
+  it("reports the expand phase for the busy indicator", async () => {
+    const phases: TrimPhase[] = [];
+    await runFitLoop(3420, fitDeps({ onPhase: (p) => phases.push(p) }));
+    expect(phases).toContain("expand");
+    // It runs after the trim loop settles, never interleaved with it.
+    expect(phases.indexOf("expand")).toBeGreaterThan(phases.indexOf("build"));
+  });
+
+  it("honours a custom floor", async () => {
+    // At a 25% floor, a 1000-char draft on a 3420 budget is already fine.
+    const d = fitDeps();
+    const r = await runFitLoop(3420, d, { floorFraction: 0.25 });
+
+    expect(d.requestAdditions).not.toHaveBeenCalled();
+    expect(r.expandPasses).toBe(0);
   });
 });

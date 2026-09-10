@@ -14,7 +14,7 @@ import { computeBuildBudget } from "@/lib/latex";
 import { getTemplate, DEFAULT_TEMPLATE_ID } from "@/lib/templates";
 import { checkPageCount, scanAts, type AtsScanResult } from "@/lib/render";
 import { lintLatexForAts, type AtsFinding } from "@/lib/ats/source-lint";
-import { runTrimLoop } from "@/lib/trim-loop";
+import { runFitLoop } from "@/lib/trim-loop";
 import type { HonestVerdict } from "@/components/HonestyPanel";
 
 export type Phase = "input" | "analyzed" | "honesty" | "building" | "built";
@@ -26,6 +26,7 @@ export type Busy =
   | "trim"
   | "render"
   | "verify"
+  | "expand"
   | "ats"
   | "reanalyze";
 
@@ -131,9 +132,9 @@ export function useBuildPipeline() {
         template.targetChars,
       );
 
-      const result = await runTrimLoop(budget, {
+      const result = await runFitLoop(budget, {
         onPhase: setBusy,
-        generate: async (cuts) => {
+        generate: async (cuts, additions) => {
           const res = await fetch("/api/build", {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -155,6 +156,7 @@ export function useBuildPipeline() {
               },
               budget,
               cuts,
+              additions,
             }),
           });
           const data = await res.json();
@@ -166,6 +168,35 @@ export function useBuildPipeline() {
           return data.latex as string;
         },
         checkPages: (latex) => checkPageCount(latex),
+        requestAdditions: async (latex, currentChars, shortBy) => {
+          const res = await fetch("/api/tailor/expand", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              latex,
+              jobDescription,
+              // The ONLY legal source of additions. Quotes are verified
+              // against this server-side.
+              profilePool: [
+                profile.parsed ? JSON.stringify(profile.parsed) : "",
+                profile.baseCvLatex ?? "",
+                profile.additionalSkills ?? "",
+              ]
+                .filter(Boolean)
+                .join("\n\n"),
+              shortBy,
+              budget,
+              analysis: profileFitAnalysis,
+              honest: {
+                perKeyword: honest,
+                notes: honestNotes.trim() || undefined,
+              },
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok || !Array.isArray(data.suggestedAdditions)) return [];
+          return data.suggestedAdditions as string[];
+        },
         requestCuts: async (latex, currentChars, overBy) => {
           const res = await fetch("/api/tailor/verify", {
             method: "POST",
