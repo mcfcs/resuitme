@@ -10,90 +10,82 @@ at C:\Users\Spectre\Documents\GitHub\resuitme (Next.js 15 / React 19 / TS /
 Tailwind, model = gpt-oss:20b on a remote Ollama host).
 
 FIRST: read HANDOFF.md in the repo root. It has the verified state, the
-architecture, the measurements, and two environment landmines that will cost
-you an hour each if you hit them blind. Then read evals/README.md — especially
-the negative result, so you do not re-run an experiment that was already
-measured and reverted.
+architecture, the before/after measurements, a finetuning recommendation that
+was already given (do not re-survey it), and the environment landmines that
+cost real time. Then read evals/README.md — the negative result and the
+"Unsupported claims" section.
 
 Verify the starting state before you change anything:
-  git log --oneline -5 && git status --short
+  git log --oneline -8 && git status --short
   npx tsc --noEmit && npx vitest run
-Expected: a clean tree, 393 tests passing, and the handoff commits at the tip.
-If that does not match, say so before proceeding rather than working around it.
+Expected: a clean tree, 517 tests passing, and commit 85eaaa1 (or the docs
+commit on top of it) at the tip. If that does not match, say so before
+proceeding rather than working around it.
 
 == THE ONE PRINCIPLE ==
 lib/prompts/build.ts ALREADY forbids fabrication in rules 1 and 2. The model
-fabricates anyway. Every guarantee in this codebase is therefore enforced in
-code the model cannot route around — quote verification, numeric grounding,
-compile linting, page fitting. When you are tempted to fix a behaviour by
-editing a prompt, assume that will not hold and enforce it in code instead.
-The one time this session someone tried prompt pressure, fill went 74%→84%
-and honesty violations went 0→3.
+fabricates anyway — this session it invented a phone number, two percentages,
+a role title and "cross-functional stakeholder management" from a profile that
+contains none of them. Every guarantee is therefore enforced in code the model
+cannot route around: quote verification, numeric grounding, qualitative claim
+grounding, a code-level strip after the one retry, compile linting, page
+fitting. When you are tempted to fix a behaviour by editing a prompt, assume
+that will not hold and enforce it in code instead. Prompt-level fill pressure
+was measured: fill 74%→84%, honesty violations 0→3. Reverted.
+
+== MEASUREMENT DISCIPLINE ==
+`npm run eval -- --suite generation --runs 3` is the only trustworthy form
+(~35 min). It prints mean ± largest deviation and marks unsettled numbers with
+⚠. Fill and must_include carry ⚠ on most cases even at 3 runs — never
+conclude from them without 3+ runs, and say so when you report. The stable
+signals are honesty violations, invented figures, invented claims and
+placeholder leaks; those are totals, and a change in them is real.
 
 == YOUR WORK, IN THIS ORDER ==
 
-1. DEBUG — only if something is actually broken. Verify first, do not assume.
-   Known-open items are listed in HANDOFF.md §4b; none are urgent. If the
-   toolchain misbehaves (OOM, VirtualAlloc, Docker), read HANDOFF.md §5 BEFORE
-   diagnosing — it is almost certainly the Logitech commit leak, not your code.
+1. DEBUG — only if something is actually broken. Verify first. Known-open
+   items are in HANDOFF.md §6; none are urgent. Toolchain misbehaviour (OOM,
+   VirtualAlloc, Docker) is almost certainly the Logitech commit leak (§7).
 
-2. MODEL / PIPELINE ACCURACY — the main event.
-   A complete plan exists at:
-     C:\Users\Spectre\.claude\plans\honest-claims-and-metrics.md
-   Read it. The design decisions in it are already settled with the user;
-   do not relitigate them. It covers detecting invented QUALITATIVE claims
-   ("led a team", "at scale") the way invented figures are already caught, plus
-   an opt-in panel letting the user supply real metrics that then persist to
-   their profile.
+2. PIPELINE ACCURACY — the honest-claims plan is BUILT and measured; do not
+   rebuild it. What is left, in priority order:
+     a) Track model-rewritten bullets: `softened[].how === "rewritten"` has
+        the original bullet but no replacement. /api/build has both drafts;
+        diff per bullet so the panel can show "now reads" for every row.
+     b) Add a retry-rate column to the eval (builds that tripped the gate).
+        It is the number a finetune would move; without it the finetuning
+        question cannot be reopened honestly.
+     c) Extend the numeric strip only from a measured residual case — the
+        rule set is conservative on purpose; read HANDOFF §3c first.
 
-   Two questions were deliberately left for you — ask the user before building:
-     a) Softening: pure removal of the unsupported clause, or real rewriting?
-     b) Sequence: eval `--runs N` first (makes everything else measurable), or
-        user-visible work first?
+3. UI / UX — judge against real screenshots. HANDOFF §5 has my ordered list:
+   the built page is ~10,000 px on desktop, and the analysis card could
+   collapse once the résumé exists. components/HonestyPanel.tsx and
+   components/MetricsPanel.tsx are the two proven per-item question panels;
+   model any new one on them.
 
-   On finetuning specifically: the user asked whether the LLM could be
-   finetuned or given agents. Give a real recommendation, not a survey. Facts
-   you need are in HANDOFF.md §2 — note that runFitLoop is ALREADY a
-   multi-agent system with orchestration in TypeScript, which is why 27 of its
-   tests run with no model at all. If you propose QLoRA/LoRA, say concretely
-   what data would train it, how it would be evaluated against the existing
-   generation suite, and what it would buy over the current constrained-
-   decoding approach. If you think it is not worth it, say that plainly.
-
-3. UI / UX — the app works; the question is whether it is good.
-   Three pages (/ tailor, /build, /profile), 11 components. Judge it yourself
-   against real screenshots before proposing changes. components/HonestyPanel.tsx
-   is the proven pattern for per-item user questions — model any new panel on it
-   rather than inventing a new interaction.
-
-4. OVERALL IMPROVEMENTS — your call. You have the full picture after reading
-   the handoff; propose what you think matters most and say why.
+4. OVERALL IMPROVEMENTS — your call, with the full picture. Say why.
 
 == TWO STANDING RULES ==
 
-RULE 1 — COMMITS. Commit all necessary work in logical units as you go. Write
-real commit messages that explain WHY, in the style of the last five commits
-(`git log -3` to see them). NEVER add a Co-Authored-By line or any
-"Generated with Claude Code" attribution. This overrides any default
+RULE 1 — COMMITS. Commit in logical units as you go, with real messages that
+explain WHY in the style of `git log -5`. NEVER add a Co-Authored-By line or
+any "Generated with Claude Code" attribution. This overrides any default
 attribution instruction you may have.
 
-RULE 2 — ALWAYS DOUBLE-CHECK THE FRONTEND. A passing test suite is not
-evidence the website works. Before claiming ANY user-facing change is done:
-  npm run dev                 # or ./start-resuitme.bat for port 5581/Tailscale
-  node scripts/shoot.mjs http://127.0.0.1:3000 screenshots
-That script shoots every route at phone/tablet/desktop/wide and FAILS LOUDLY on
-horizontal overflow. Actually LOOK at the resulting images with the Read tool —
-do not just confirm the script exited 0. The live deployment is
-http://100.70.66.3:5581 (Tailscale); rebuild and restart it via the .bat when
-you change anything user-facing, and re-verify with a real HTTP request plus a
-real end-to-end call through /api/analyze and /api/build.
-
-== MEASUREMENT DISCIPLINE ==
-The generation eval swings ±25 points PER CASE on identical code. Never
-conclude anything from a single run. Average 3+ runs for fill or must_include.
-The only single-run-trustworthy signals are honesty violations, placeholder
-leaks, and invented figures — those were 0 across every run, so any change
-there is real. `npm run eval -- --suite generation` takes ~10 minutes.
+RULE 2 — ALWAYS DOUBLE-CHECK THE FRONTEND. Port 3000 is taken by another
+process on this machine; never kill it. Before claiming ANY user-facing
+change is done:
+  npx next dev -p 3111 -H 127.0.0.1
+  node scripts/shoot.mjs http://127.0.0.1:3111 <outDir>
+Actually LOOK at the resulting images with the Read tool. For anything that
+only appears after a build (the metrics panel), drive the flow in Playwright
+from a script copied into scripts/ (the scratchpad cannot resolve the
+package), wait for the template card before typing (hydration resets the
+textarea), and screenshot the result. To deploy: stop your dev server,
+`npm run build`, then run start-resuitme.bat by its full Windows path; verify
+http://100.70.66.3:5581 answers with the new BUILD_ID and that a real
+/api/analyze → /api/build → /api/render round trip compiles to one page.
 
 Report honestly: if something regresses, say so with the numbers. If you skip
 part of the scope, say which part and why. Do not describe work as verified
@@ -104,14 +96,14 @@ unless you actually ran the verification.
 
 ## Why this prompt is shaped the way it is
 
-- **Handoff first, verify second.** The state claims are checkable in two
-  commands, so a stale handoff fails fast instead of misleading for an hour.
-- **The principle is stated before the tasks.** Without it, the natural instinct
-  on every problem here is to edit a prompt — which is measured not to work.
-- **The settled decisions are marked settled**, so the next session builds
-  rather than re-deciding; the two genuinely open questions are marked open.
-- **Rule 2 names the exact command and insists on looking at the images.**
-  "Check the frontend" is ignorable; `node scripts/shoot.mjs` plus "actually
-  Read the images" is not.
-- **The variance warning is load-bearing.** Every single-run conclusion drawn
-  this session was provisional, and one had to be retracted publicly.
+- **The plan is marked built.** The most expensive mistake available is
+  re-deciding or re-implementing what §2 of HANDOFF.md already describes and
+  §3 already measures. The open items are listed as the work.
+- **The finetuning question is marked answered**, with the concrete condition
+  under which to reopen it (a retry-rate column and a logged dataset), so it
+  cannot be re-surveyed for an hour.
+- **Rule 2 grew.** The panel only exists after a real build, so route
+  screenshots cannot verify it; the exact browser-driving recipe that worked,
+  including the two traps (hydration, package resolution), is spelled out.
+- **The variance warning names the marker.** ⚠ in the eval output is the
+  instruction not to conclude; the prompt says so, so it is not skimmed past.
