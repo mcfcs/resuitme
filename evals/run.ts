@@ -27,6 +27,7 @@ import {
   generationReport,
   type GenerationResult,
 } from "./generation";
+import { aggregateRuns, aggregatedReport } from "./aggregate";
 import { fitReport, loadCorpus, toCase, type FitCase } from "./fit-matrix";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -350,7 +351,8 @@ function parseArgs(argv: string[]) {
     suite?: string;
     template?: string;
     corpus?: string;
-  } = {};
+    runs: number;
+  } = { runs: 1 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--model") out.model = argv[++i];
@@ -360,7 +362,14 @@ function parseArgs(argv: string[]) {
     else if (a === "--suite") out.suite = argv[++i];
     else if (a === "--template") out.template = argv[++i];
     else if (a === "--corpus") out.corpus = argv[++i];
-    else if (a === "--help" || a === "-h") {
+    else if (a === "--runs") {
+      const n = Number(argv[++i]);
+      if (!Number.isInteger(n) || n < 1) {
+        console.error(`--runs needs a positive integer, got "${argv[i]}"`);
+        process.exit(2);
+      }
+      out.runs = n;
+    } else if (a === "--help" || a === "-h") {
       console.log(
         [
           "Usage: npm run eval -- [options]",
@@ -372,6 +381,10 @@ function parseArgs(argv: string[]) {
           "                 'off' UNSETS the variable rather than sending",
           "                 think:false, which crashes gpt-oss's llama-server.",
           "  --suite <name> analyzer (default) | generation | fit",
+          "  --runs <n>     Repeat the generation suite n times and report",
+          "                 mean ± spread per case. The suite swings ±25 points",
+          "                 per case on identical code, so use 3+ before",
+          "                 believing any fill or must_include number.",
           "  --corpus <path> real-JD corpus for --suite fit",
           "  --json <path>  Also write raw results as JSON",
           "",
@@ -634,22 +647,47 @@ async function main() {
   }
 
   if (args.suite === "generation") {
-    const gen = await runGenerationSuite(fixtures, label, args.template);
+    // Each run is the FULL pipeline, analyzer included. Reusing one analysis
+    // across runs would hide the analyzer's own variance, which is part of
+    // what the user experiences.
+    const runs: GenerationResult[][] = [];
+    for (let i = 0; i < args.runs; i++) {
+      if (args.runs > 1) console.error(`run ${i + 1}/${args.runs}`);
+      runs.push(await runGenerationSuite(fixtures, label, args.template));
+    }
     console.error("");
-    console.log(generationReport(gen, label));
+    console.log(
+      args.runs > 1
+        ? aggregatedReport(runs, label)
+        : generationReport(runs[0], label),
+    );
     if (args.json) {
-      writeFileSync(args.json, JSON.stringify(gen, null, 2));
+      // One run keeps the flat array older tooling reads; several runs are
+      // written run-by-run with the aggregate alongside.
+      const payload =
+        args.runs > 1
+          ? { runs: args.runs, results: runs, aggregate: aggregateRuns(runs) }
+          : runs[0];
+      writeFileSync(args.json, JSON.stringify(payload, null, 2));
       console.error(`\nRaw results written to ${args.json}`);
     }
-    const bad = gen.some(
-      (r) =>
-        !r.ok ||
-        (r.honestyViolations?.length ?? 0) > 0 ||
-        (r.placeholderLeaks?.length ?? 0) > 0 ||
-        (r.criticalFindings?.length ?? 0) > 0,
-    );
+    const bad = runs
+      .flat()
+      .some(
+        (r) =>
+          !r.ok ||
+          (r.honestyViolations?.length ?? 0) > 0 ||
+          (r.placeholderLeaks?.length ?? 0) > 0 ||
+          (r.criticalFindings?.length ?? 0) > 0,
+      );
     process.exitCode = bad ? 1 : 0;
     return;
+  }
+
+  if (args.runs > 1) {
+    console.error(
+      "--runs applies to --suite generation only; running the analyzer suite once.",
+    );
   }
 
   const results: CaseResult[] = [];

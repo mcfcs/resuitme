@@ -95,6 +95,7 @@ normalised and a match counts when either string contains the other, so
 
 ```bash
 npm run eval -- --suite generation
+npm run eval -- --suite generation --runs 3          # mean ± spread per case
 npm run eval -- --suite generation --template compact
 npm run eval -- --suite generation --case cicd-implicit --json out.json
 ```
@@ -124,6 +125,40 @@ number is what turns "we think that helped" into evidence.
 
 `--template <id>` runs the suite against a specific layout, which is how the
 `targetChars` calibration for a new layout gets validated.
+
+### `--runs N`, and why one run is not a measurement
+
+On identical code the suite swings **±25 points per case** between runs:
+
+| case                  | run 2 | run 3 | run 4 |
+| --------------------- | ----- | ----- | ----- |
+| adjacent-not-equal    | 96%   | 94%   | 69%   |
+| fullstack-react-flask | 92%   | 99%   | 72%   |
+
+Every conclusion drawn from a single run of fill or `must_include` has had to
+be walked back at least once. So a single run now prints its heading as
+`1 run` and `--runs N` repeats the whole pipeline — analyzer included, so its
+variance is counted too — and reports each metric as **mean ± spread**:
+
+```
+| adjacent-not-equal | 100 ±0 | 3/3 | 100% ±0 | 0 | 0 | 0 | 1.0 | 86% ±17⚠ |
+```
+
+- `±` is the largest deviation from the mean, so `mean ± spread` brackets
+  every observed run. Three samples do not support a standard deviation; the
+  extremes are honest about how little is known.
+- `⚠` marks a range wider than 10 points. That number has **not settled** and
+  must not be concluded from, however precise it looks.
+- Honesty violations, invented figures and placeholder leaks are **totals**
+  across runs, never averaged. One hit in three runs is one hit.
+- The mean row's `±` is taken over per-run suite means, so it says how much
+  the suite as a whole moves between runs.
+
+With `--json`, a multi-run result is written as
+`{ runs, results: [[...run 1], [...run 2]], aggregate }`; a single run keeps
+the flat array. Cost is linear: three runs of ten fixtures is ~30 minutes on
+the local host. The aggregation itself is pure (`evals/aggregate.ts`) and
+unit-tested without a model.
 
 ### Fill, and why the mean has two numbers
 

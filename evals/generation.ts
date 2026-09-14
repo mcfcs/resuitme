@@ -293,7 +293,12 @@ export function generationReport(
   label: string,
 ): string {
   const lines: string[] = [];
-  lines.push(`### Generation eval: \`${label}\``);
+  // Named as a single run so it is never mistaken for a settled number: fill
+  // and must_include swing ±25 points per case between runs of identical
+  // code. --runs 3 prints mean ± spread instead (evals/aggregate.ts).
+  lines.push(
+    `### Generation eval: \`${label}\` — 1 run (use --runs 3+ before concluding)`,
+  );
   lines.push("");
   lines.push(
     "| Case | ATS | Pages | must_include | Honesty | Figures | Placeholders | Trims | Fill | Time |",
