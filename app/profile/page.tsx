@@ -12,7 +12,9 @@ import { Notice } from "@/components/Sheet";
 import DocumentBlock from "@/components/profile/DocumentBlock";
 import AddToCvPanel from "@/components/profile/AddToCvPanel";
 import ParsedProfileView from "@/components/profile/ParsedProfileView";
+import MetricsList from "@/components/profile/MetricsList";
 import SourceBadge from "@/components/profile/SourceBadge";
+import { saveProfile } from "@/lib/profile";
 import { useProfileStorage } from "@/app/profile/hooks/useProfileStorage";
 import { useCvAdder } from "@/app/profile/hooks/useCvAdder";
 
@@ -231,6 +233,20 @@ export default function ProfilePage() {
           </div>
           <ParsedProfileView parsed={profile.parsed} />
         </section>
+      )}
+
+      {profile.metrics && profile.metrics.length > 0 && (
+        <MetricsList
+          metrics={profile.metrics}
+          onRemove={(i) => {
+            const next = {
+              ...profile,
+              metrics: profile.metrics!.filter((_, j) => j !== i),
+            };
+            setProfile(next);
+            saveProfile(next);
+          }}
+        />
       )}
     </PageShell>
   );

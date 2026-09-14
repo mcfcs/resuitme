@@ -15,6 +15,7 @@ import BackendFooter from "@/components/BackendFooter";
 import { AnalysisCard, ScorePill } from "@/components/Analysis";
 import FitVerdictNotice from "@/components/FitVerdict";
 import HonestyPanel from "@/components/HonestyPanel";
+import MetricsPanel from "@/components/MetricsPanel";
 import LatexResult from "@/components/LatexResult";
 import TemplateCard from "@/components/build/TemplateCard";
 import { useBuildPipeline } from "@/app/build/hooks/useBuildPipeline";
@@ -47,6 +48,12 @@ export default function BuildPage() {
     setVerdict,
     setAllVerdicts,
     canAnalyze,
+    softened,
+    metricAnswers,
+    setMetricAnswer,
+    saveMetricsToProfile,
+    setSaveMetricsToProfile,
+    applyMetrics,
   } = useBuildPipeline();
 
   const usingBuiltinTemplate = !profile?.baseResumeLatex?.trim();
@@ -161,7 +168,7 @@ export default function BuildPage() {
                   setAllVerdicts={setAllVerdicts}
                   honestNotes={honestNotes}
                   setHonestNotes={setHonestNotes}
-                  onContinue={build}
+                  onContinue={() => build()}
                   busy={busy !== null}
                   ctaLabel="Build the résumé"
                   sourceNoun="your profile doesn't cover"
@@ -170,7 +177,7 @@ export default function BuildPage() {
               ) : (
                 <div className="flex flex-wrap items-center gap-3">
                   <button
-                    onClick={build}
+                    onClick={() => build()}
                     disabled={busy !== null}
                     className="w-full rounded-md bg-sage-ink px-6 py-3 text-sm font-semibold text-ink transition hover:bg-sage-ink disabled:opacity-40 sm:w-auto"
                   >
@@ -259,6 +266,20 @@ export default function BuildPage() {
               </>
             }
           />
+
+          {/* After the résumé, never before it: the résumé is finished, and
+              this is opt-in enrichment in the candidate's own words. */}
+          {softened.length > 0 && (
+            <MetricsPanel
+              softened={softened}
+              answers={metricAnswers}
+              setAnswer={setMetricAnswer}
+              saveToProfile={saveMetricsToProfile}
+              setSaveToProfile={setSaveMetricsToProfile}
+              onApply={applyMetrics}
+              busy={busy !== null}
+            />
+          )}
         </>
       )}
     </PageShell>

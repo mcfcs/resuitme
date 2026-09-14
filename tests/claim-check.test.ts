@@ -129,6 +129,18 @@ describe("findUngroundedClaims — scale and scope", () => {
     ).toEqual([]);
   });
 
+  it("sees through the Unicode non-breaking hyphen the model writes", () => {
+    // Measured in live output: "cross‑functional" with U+2011.
+    const { latex } = softenClaims(
+      doc("Drove cross‑functional pricing reviews"),
+      PROFILE,
+    );
+    expect(triggers(doc("Drove cross‑functional pricing reviews"))).toEqual([
+      "cross functional",
+    ]);
+    expect(latex).toContain("{Drove pricing reviews}");
+  });
+
   it("accepts a hyphen or a space in either the claim or the pool", () => {
     const pool = `${PROFILE} large scale batch jobs`;
     expect(triggers(doc("Ran large-scale batch jobs"), pool)).toEqual([]);

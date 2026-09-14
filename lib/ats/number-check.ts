@@ -21,6 +21,8 @@
 //
 // Pure and dependency-free so it is unit-testable without a model.
 
+import { bulletTextAt, enclosingBullet } from "./bullets";
+
 /** A figure found in generated output, and whether the source supports it. */
 export type NumericClaim = {
   /** As it appeared, e.g. "15\\%" or "700,000+". */
@@ -169,6 +171,26 @@ function contextAround(text: string, index: number, length: number): string {
 }
 
 /**
+ * The bullet a figure sits in, as the user would read it — or, outside any
+ * bullet (a header line, a summary paragraph), a window around the match.
+ * A raw window inside a bullet read as "...18 months.} 
+esumeItemListEnd"
+ * in the metrics panel: LaTeX plumbing where the candidate's words belong.
+ */
+function contextFor(
+  latex: string,
+  bodyOffset: number,
+  body: string,
+  index: number,
+  length: number,
+): string {
+  if (enclosingBullet(latex, bodyOffset + index).isItem) {
+    return bulletTextAt(latex, bodyOffset + index);
+  }
+  return contextAround(body, index, length);
+}
+
+/**
  * Pull every quantitative claim out of a generated résumé's BODY.
  *
  * Only figures that read as achievements survive: layout lengths, years,
@@ -207,7 +229,7 @@ function extractNumericClaimsAt(latex: string): PositionedClaim[] {
       raw: run,
       // Digits only: the comparison for a contact number ignores formatting.
       value: run.replace(/\D/g, ""),
-      context: contextAround(body, start, run.length),
+      context: contextFor(latex, bodyOffset, body, start, run.length),
     });
   }
   const inPhone = (i: number) => phoneSpans.some(([s, e]) => i >= s && i < e);
@@ -256,7 +278,7 @@ function extractNumericClaimsAt(latex: string): PositionedClaim[] {
       at: start,
       raw,
       value: normalizeNumber(digits),
-      context: contextAround(body, start, raw.length),
+      context: contextFor(latex, bodyOffset, body, start, raw.length),
     });
   }
 

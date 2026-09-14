@@ -36,6 +36,7 @@
 
 import { normalizeForQuoteMatch } from "./quote-check";
 import { visibleText } from "@/lib/latex";
+import { enclosingBullet, readableText, type BulletSpan } from "./bullets";
 
 export type ClaimKind = "leadership" | "scale" | "seniority" | "duration";
 
@@ -326,77 +327,6 @@ function scan(body: string): Found[] {
   return out.sort((a, b) => a.at - b.at);
 }
 
-// -------------------------------------------------------------- bullets ----
-
-type Span = {
-  /** Start/end of the whole construct to delete when the bullet is dropped. */
-  outerStart: number;
-  outerEnd: number;
-  /** Start/end of the editable text inside it. */
-  innerStart: number;
-  innerEnd: number;
-};
-
-/** Index just past the brace group opening at `open`, or -1 if unbalanced. */
-function matchBrace(s: string, open: number): number {
-  let depth = 0;
-  for (let i = open; i < s.length; i++) {
-    const c = s[i];
-    if (c === "\\") {
-      i += 1;
-      continue;
-    }
-    if (c === "{") depth += 1;
-    else if (c === "}") {
-      depth -= 1;
-      if (depth === 0) return i + 1;
-    }
-  }
-  return -1;
-}
-
-/**
- * The bullet containing position `at`.
- *
- * Every built-in template writes bullets as `\resumeItem{...}`, so that is
- * the construct looked for first — with real brace matching, since a bullet
- * routinely contains `\textbf{...}`. A user's own LaTeX may use bare `\item`
- * lines; there the enclosing line is the bullet, which is also what the
- * summary paragraph resolves to.
- */
-function enclosingBullet(s: string, at: number): Span {
-  const macro = "\\resumeItem{";
-  let from = 0;
-  for (;;) {
-    const i = s.indexOf(macro, from);
-    if (i === -1 || i > at) break;
-    const open = i + macro.length - 1;
-    const close = matchBrace(s, open);
-    if (close !== -1 && at >= open && at < close) {
-      return {
-        outerStart: i,
-        outerEnd: close,
-        innerStart: open + 1,
-        innerEnd: close - 1,
-      };
-    }
-    from = i + 1;
-  }
-  const lineStart = s.lastIndexOf("\n", at - 1) + 1;
-  const nl = s.indexOf("\n", at);
-  const lineEnd = nl === -1 ? s.length : nl;
-  // A bare `\item` is the bullet marker, not the bullet: the text starts
-  // after it, so a leading-verb rule sees the verb as leading.
-  const marker = /^\s*\\item\s*/.exec(s.slice(lineStart, lineEnd));
-  const innerStart = lineStart + (marker?.[0].length ?? 0);
-  return {
-    outerStart: lineStart,
-    outerEnd: lineEnd,
-    innerStart: Math.min(innerStart, at),
-    innerEnd: lineEnd,
-  };
-}
-
 // ------------------------------------------------------------ softening ----
 
 const IRREGULAR_PAST: Record<string, string> = {
@@ -541,14 +471,14 @@ export function findUngroundedClaims(
     raw: p.found.raw,
     kind: p.found.kind,
     trigger: p.found.trigger,
-    context: visibleText(p.bulletText),
-    softened: p.softenedBullet === null ? null : visibleText(p.softenedBullet),
+    context: readableText(p.bulletText),
+    softened: p.softenedBullet === null ? null : readableText(p.softenedBullet),
   }));
 }
 
 type Planned = {
   found: Found;
-  span: Span;
+  span: BulletSpan;
   bulletText: string;
   /** The bullet after ALL its claims are removed; null when dropped. */
   softenedBullet: string | null;
@@ -557,14 +487,19 @@ type Planned = {
 /** Every ungrounded claim, resolved to its bullet, with the group rewrite. */
 function plan(latex: string, pool: string): Planned[] {
   if (!latex?.trim()) return [];
-  const { body, offset } = documentBody(latex);
+  const { body: rawBody, offset } = documentBody(latex);
+  // The model writes "cross‑functional" and "hands‑on" with a Unicode
+  // non-breaking hyphen (measured in live output). Fold every hyphen-like
+  // code point to ASCII before scanning; one character maps to one, so
+  // offsets into the source stay exact.
+  const body = rawBody.replace(/[‐-–−]/g, "-");
   const normPool = normalizeForQuoteMatch(pool ?? "");
   const found = scan(body).filter((f) => !f.grounded(normPool));
   if (!found.length) return [];
 
   // Group by bullet so a bullet with two claims is rewritten once, and the
   // rewrite of one claim cannot shift the other's offsets.
-  const groups = new Map<number, { span: Span; items: Found[] }>();
+  const groups = new Map<number, { span: BulletSpan; items: Found[] }>();
   for (const f of found) {
     const span = enclosingBullet(latex, offset + f.at);
     const g = groups.get(span.innerStart) ?? { span, items: [] };
@@ -639,9 +574,9 @@ export function softenClaims(
   const softened: SoftenedClaim[] = planned.map((p) => ({
     claim: p.found.raw,
     kind: p.found.kind,
-    bullet: visibleText(p.bulletText),
+    bullet: readableText(p.bulletText),
     replacement:
-      p.softenedBullet === null ? null : visibleText(p.softenedBullet),
+      p.softenedBullet === null ? null : readableText(p.softenedBullet),
     how: p.softenedBullet === null ? "dropped" : "stripped",
   }));
 
