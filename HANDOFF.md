@@ -9,7 +9,7 @@ commands to re-verify are given so you can distrust it cheaply.
 
 ```
 branch        main, working tree CLEAN
-HEAD          aa2590a  Document the fill work, including the result that must not be repeated
+HEAD          9b2bf90  Add session handoff and a starting prompt for the next session
 tests         393 passing (14 files)
 typecheck     clean          lint clean          prettier clean
 deployment    http://100.70.66.3:5581  (HTTP 200, live over Tailscale)

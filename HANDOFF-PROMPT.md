@@ -18,7 +18,7 @@ measured and reverted.
 Verify the starting state before you change anything:
   git log --oneline -5 && git status --short
   npx tsc --noEmit && npx vitest run
-Expected: HEAD aa2590a, clean tree, 393 tests passing. If that does not match,
+Expected: HEAD 9b2bf90, clean tree, 393 tests passing. If that does not match,
 say so before proceeding.
 
 == THE ONE PRINCIPLE ==
