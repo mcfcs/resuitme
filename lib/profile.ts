@@ -63,6 +63,21 @@ export type ParsedProfile = {
   publications: ParsedPublication[];
 };
 
+/**
+ * A figure or claim the candidate confirmed as their own, in the metrics
+ * panel after a build. Grounded by assertion: the honesty gates treat it as
+ * part of the candidate's material, so it is asked for exactly once, ever.
+ */
+export type ProfileMetric = {
+  /** The claim this is about, as the candidate saw it ("Improved inventory turnover"). */
+  claim: string;
+  /** The figure, when there is one ("15%"). Absent for a confirmed qualitative claim. */
+  value?: string;
+  /** Which profile item it belongs to, when known — the bullet it was softened from. */
+  anchor?: string;
+  addedAt: string;
+};
+
 export type Profile = {
   baseResumeLatex?: string;
   baseCvLatex?: string;
@@ -74,8 +89,34 @@ export type Profile = {
    * means the default layout.
    */
   templateId?: string;
+  /**
+   * Candidate-confirmed figures and claims. Additive and optional like
+   * `templateId`, for the same reason.
+   */
+  metrics?: ProfileMetric[];
   updatedAt?: string;
 };
+
+/**
+ * Render confirmed metrics as lines of the candidate's own material, for the
+ * pool the build route composes from and grounds against.
+ *
+ * Each line carries the claim and, when present, the figure, next to the
+ * bullet it belongs to — so "15%" grounds only in the company of "inventory
+ * turnover", the way the candidate stated it.
+ */
+export function metricsToText(metrics: ProfileMetric[] | undefined): string {
+  if (!metrics?.length) return "";
+  return metrics
+    .filter((m) => m.claim?.trim())
+    .map((m) => {
+      const value = m.value?.trim();
+      const anchor = m.anchor?.trim();
+      const head = value ? `${m.claim.trim()}: ${value}` : m.claim.trim();
+      return anchor ? `- ${head} (${anchor})` : `- ${head}`;
+    })
+    .join("\n");
+}
 
 const STORAGE_KEY = "resuitme.profile.v2";
 const STORAGE_KEY_V1 = "resuitme.profile.v1";

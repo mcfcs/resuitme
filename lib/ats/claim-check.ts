@@ -55,14 +55,29 @@ export type UngroundedClaim = {
   softened: string | null;
 };
 
-/** What the backstop changed, for the UI to offer back to the user. */
+/** A softened claim is a qualitative claim or an invented figure. */
+export type SoftenedKind = ClaimKind | "figure";
+
+/**
+ * How a claim left the page. "rewritten": the model's retry restated the
+ * bullet itself. "stripped": the code backstop removed the claim and kept
+ * the bullet. "dropped": no rule could keep the bullet, so it went whole.
+ */
+export type SoftenedHow = "rewritten" | "stripped" | "dropped";
+
+/** What was removed from the draft, for the UI to offer back to the user. */
 export type SoftenedClaim = {
   claim: string;
-  kind: ClaimKind;
-  /** The bullet as the model wrote it. */
+  kind: SoftenedKind;
+  /** The bullet as the model first wrote it. */
   bullet: string;
-  /** The bullet as shipped; null means it was removed. */
-  replacement: string | null;
+  /**
+   * The bullet as shipped. A string when the backstop rewrote it, null when
+   * the bullet was dropped, absent when the model's retry rewrote the draft
+   * and the bullet's new form is not tracked.
+   */
+  replacement?: string | null;
+  how: SoftenedHow;
 };
 
 // ------------------------------------------------------------ patterns ----
@@ -627,6 +642,7 @@ export function softenClaims(
     bullet: visibleText(p.bulletText),
     replacement:
       p.softenedBullet === null ? null : visibleText(p.softenedBullet),
+    how: p.softenedBullet === null ? "dropped" : "stripped",
   }));
 
   return { latex: out, softened };

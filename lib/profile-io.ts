@@ -5,7 +5,7 @@
 // pasted and merged — with no way to get it back. Export is the backup;
 // import is the restore.
 
-import type { Profile } from "@/lib/profile";
+import type { Profile, ProfileMetric } from "@/lib/profile";
 
 /** Bumped only if the on-disk shape changes incompatibly. */
 export const EXPORT_FORMAT_VERSION = 1;
@@ -55,6 +55,37 @@ function optionalString(v: unknown, field: string): string | undefined {
     throw new ProfileImportError(`Field "${field}" must be a string.`);
   }
   return v;
+}
+
+/**
+ * Validate the confirmed-metrics list. These are the candidate's own
+ * assertions and they ground the honesty gates, so a malformed entry is
+ * rejected outright rather than passed through: an entry with no claim
+ * would ground nothing, and one with a non-string value could not be
+ * rendered into the pool.
+ */
+function parseMetrics(v: unknown): ProfileMetric[] {
+  if (!Array.isArray(v)) {
+    throw new ProfileImportError(`Field "metrics" must be an array.`);
+  }
+  return v.map((m, i) => {
+    if (!isRecord(m) || typeof m.claim !== "string" || !m.claim.trim()) {
+      throw new ProfileImportError(
+        `Field "metrics[${i}]" needs a non-empty "claim" string.`,
+      );
+    }
+    const out: ProfileMetric = {
+      claim: m.claim,
+      addedAt:
+        optionalString(m.addedAt, `metrics[${i}].addedAt`) ??
+        new Date(0).toISOString(),
+    };
+    const value = optionalString(m.value, `metrics[${i}].value`);
+    if (value !== undefined) out.value = value;
+    const anchor = optionalString(m.anchor, `metrics[${i}].anchor`);
+    if (anchor !== undefined) out.anchor = anchor;
+    return out;
+  });
 }
 
 /**
@@ -122,6 +153,15 @@ export function parseImport(text: string): Profile {
       throw new ProfileImportError(`Field "parsed" must be an object.`);
     }
     profile.parsed = candidate.parsed as Profile["parsed"];
+  }
+
+  // The additive optional fields. Each is carried only when present, so an
+  // older export restores to exactly what it was.
+  const templateId = optionalString(candidate.templateId, "templateId");
+  if (templateId !== undefined) profile.templateId = templateId;
+
+  if (candidate.metrics !== undefined && candidate.metrics !== null) {
+    profile.metrics = parseMetrics(candidate.metrics);
   }
 
   const hasAnything =

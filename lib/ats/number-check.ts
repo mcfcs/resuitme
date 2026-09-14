@@ -176,9 +176,22 @@ function contextAround(text: string, index: number, length: number): string {
  * rather than at the grounding step, so the caller never sees them.
  */
 export function extractNumericClaims(latex: string): NumericClaim[] {
+  return extractNumericClaimsAt(latex).map(({ at: _at, ...claim }) => claim);
+}
+
+/** A claim with its offset into the full source, for the strip. */
+type PositionedClaim = NumericClaim & { at: number };
+
+/** As `extractNumericClaims`, keeping each claim's position in `latex`. */
+function extractNumericClaimsAt(latex: string): PositionedClaim[] {
   if (!latex?.trim()) return [];
+  // Blanking preserves length, so a body offset maps straight back onto the
+  // source by adding where the body starts.
+  const bodyStart = latex.indexOf("\\begin{document}");
+  const bodyOffset =
+    bodyStart === -1 ? 0 : bodyStart + "\\begin{document}".length;
   const body = blankSubheadingDates(documentBody(latex));
-  const out: Array<NumericClaim & { at: number }> = [];
+  const out: PositionedClaim[] = [];
 
   // Contact numbers first, so a phone is consumed whole rather than shattered
   // into one claim per digit group. Each span is then invisible to the general
@@ -249,7 +262,9 @@ export function extractNumericClaims(latex: string): NumericClaim[] {
 
   // Phones were gathered ahead of the digit scan; restore document order so a
   // caller can report findings top to bottom.
-  return out.sort((a, b) => a.at - b.at).map(({ at: _at, ...claim }) => claim);
+  return out
+    .sort((a, b) => a.at - b.at)
+    .map((c) => ({ ...c, at: c.at + bodyOffset }));
 }
 
 /**
@@ -408,11 +423,104 @@ export function findUngroundedNumbers(
   latex: string,
   pool: string,
 ): NumericClaim[] {
-  return extractNumericClaims(latex).filter((c) =>
+  return findUngroundedNumbersAt(latex, pool).map(
+    ({ at: _at, ...claim }) => claim,
+  );
+}
+
+function findUngroundedNumbersAt(
+  latex: string,
+  pool: string,
+): PositionedClaim[] {
+  return extractNumericClaimsAt(latex).filter((c) =>
     // A contact number is grounded only by the same contact number, never by
     // arithmetic or by digits scattered across unrelated figures.
     isPhoneShaped(c.raw)
       ? !phoneIsGrounded(c.raw, pool)
       : !numberIsGrounded(c.value, pool),
   );
+}
+
+// ------------------------------------------------------------------ strip ----
+
+/** A separator between header fields: `$|$`, `|`, `·`, a dash or a comma. */
+const HEADER_SEP = String.raw`(?:\$\|\$|\\textbar|\||·|•|—|–|-|,)`;
+const SEP_AFTER = new RegExp(String.raw`^\s*${HEADER_SEP}\s*`);
+const SEP_BEFORE = new RegExp(String.raw`\s*${HEADER_SEP}\s*$`);
+
+/** "by 15%", "to 95%", "from 60%": the preposition goes with the figure. */
+const PCT_LEAD =
+  /\s+(?:by|to|from|of|at)\s+(?:~|over|about|nearly|up to|roughly|approximately|around|more than|almost)?\s*$/i;
+
+/** "a 15% reduction": the figure goes, the noun stays. */
+const PCT_NOUN =
+  /^\s+(?=(?:improvement|increase|reduction|boost|gain|uplift|decrease|drop|faster|lift|growth|rise|cut|speedup|savings?)\b)/i;
+
+export type NumberStrip = {
+  latex: string;
+  /** Figures removed in code. */
+  stripped: NumericClaim[];
+  /** Figures still on the page: no removal rule applied safely. */
+  residual: NumericClaim[];
+};
+
+/**
+ * Remove the invented figures a removal rule can take out safely, in code.
+ *
+ * The retry is the model's chance to restate an achievement without its
+ * invented figure. When it does not — measured: an invented header phone
+ * survived a retry — the figure would otherwise ship. A phone number is the
+ * single worst thing to ship, because a recruiter will dial it, so a
+ * contact number is always removed along with its separator. A percentage
+ * comes out where its clause survives without it: "boosting turnover by
+ * 15\%" becomes "boosting turnover", "a 30\% reduction" becomes "a
+ * reduction". Anything else is left in place and reported as residual
+ * rather than mangled: a wrong deletion is a new kind of fabrication.
+ */
+export function stripUngroundedNumbers(
+  latex: string,
+  pool: string,
+): NumberStrip {
+  const claims = findUngroundedNumbersAt(latex, pool);
+  if (!claims.length) return { latex, stripped: [], residual: [] };
+
+  const stripped: NumericClaim[] = [];
+  const residual: NumericClaim[] = [];
+  let out = latex;
+
+  // Right to left, so each deletion leaves earlier offsets intact.
+  for (const c of [...claims].sort((a, b) => b.at - a.at)) {
+    const { at, ...claim } = c;
+    let start = at;
+    let end = at + c.raw.length;
+    const before = out.slice(0, start);
+    const after = out.slice(end);
+
+    let rule: RegExpExecArray | null = null;
+    if (isPhoneShaped(c.raw)) {
+      if ((rule = SEP_AFTER.exec(after))) end += rule[0].length;
+      else if ((rule = SEP_BEFORE.exec(before))) start -= rule[0].length;
+      // A phone with no separator is still removed, whole.
+      rule ??= /./.exec("x");
+    } else if (/(?:\\%|%|percent)$/.test(c.raw)) {
+      if ((rule = PCT_LEAD.exec(before))) start -= rule[0].length;
+      else if ((rule = PCT_NOUN.exec(after))) end += rule[0].length;
+    }
+
+    if (!rule) {
+      residual.unshift(claim);
+      continue;
+    }
+
+    // Close the seam: never leave a double space or a space before a comma.
+    let head = out.slice(0, start);
+    let tail = out.slice(end);
+    if (/\s$/.test(head) && /^\s/.test(tail)) tail = tail.replace(/^\s+/, "");
+    if (/\s$/.test(head) && /^[,.;:)]/.test(tail))
+      head = head.replace(/\s+$/, "");
+    out = head + tail;
+    stripped.unshift(claim);
+  }
+
+  return { latex: out, stripped, residual };
 }

@@ -244,6 +244,7 @@ describe("softenClaims — the code backstop", () => {
         kind: "leadership",
         bullet: "Led a team to design the pricing dashboard",
         replacement: "Designed the pricing dashboard",
+        how: "stripped",
       },
     ]);
   });
