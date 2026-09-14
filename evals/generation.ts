@@ -14,6 +14,7 @@ import { getTemplate, type BuiltinTemplate } from "@/lib/templates";
 import { runFitLoop } from "@/lib/trim-loop";
 import { lintLatexForAts } from "@/lib/ats/source-lint";
 import { findUngroundedNumbers } from "@/lib/ats/number-check";
+import { findUngroundedClaims } from "@/lib/ats/claim-check";
 import { scanPdfBytes } from "@/lib/ats/pdf-scan";
 import { computeBuildBudget } from "@/lib/latex";
 import type { Analysis } from "@/lib/types";
@@ -64,6 +65,12 @@ export type GenerationResult = {
   criticalFindings?: string[];
   /** Figures in the output that the candidate's material does not support. */
   inventedNumbers?: string[];
+  /**
+   * Qualitative claims — leadership, scale, seniority, duration — in the
+   * output that the candidate's material does not support. Reported as
+   * `kind:trigger`, e.g. "leadership:led".
+   */
+  inventedClaims?: string[];
   /** 1 when the expand pass ran, 0 when the draft was already in band. */
   expandPasses?: number;
   /** True when an expansion was produced but rejected as a regression. */
@@ -240,6 +247,16 @@ export async function evaluateGeneration(
       ? findUngroundedNumbers(latex, numericPool).map((c) => c.raw)
       : [];
 
+    // --- invented claims ---------------------------------------------------
+    // The qualitative sibling: "led a team", "at scale", "5+ years" with no
+    // basis in the source. Same pool, same rule — the fixture's own material
+    // is the only thing that can ground a claim.
+    const inventedClaims = numericPool
+      ? findUngroundedClaims(latex, numericPool).map(
+          (c) => `${c.kind}:${c.trigger}`,
+        )
+      : [];
+
     // Fill against what was ACHIEVABLE, not merely against the budget. A
     // fixture whose source cannot fill a page is not underperforming when it
     // does not.
@@ -267,6 +284,7 @@ export async function evaluateGeneration(
       placeholderLeaks: leaks,
       criticalFindings: critical,
       inventedNumbers,
+      inventedClaims,
       expandPasses: result.expandPasses,
       expandReverted: result.expandReverted,
     };
@@ -301,13 +319,15 @@ export function generationReport(
   );
   lines.push("");
   lines.push(
-    "| Case | ATS | Pages | must_include | Honesty | Figures | Placeholders | Trims | Fill | Time |",
+    "| Case | ATS | Pages | must_include | Honesty | Figures | Claims | Placeholders | Trims | Fill | Time |",
   );
-  lines.push("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |");
+  lines.push(
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+  );
 
   for (const r of results) {
     if (!r.ok) {
-      lines.push(`| ${r.name} | — | — | — | — | — | — | — | — | ERROR |`);
+      lines.push(`| ${r.name} | — | — | — | — | — | — | — | — | — | ERROR |`);
       continue;
     }
     const honesty = r.honestyViolations?.length
@@ -321,9 +341,12 @@ export function generationReport(
     const figures = r.inventedNumbers?.length
       ? `**${r.inventedNumbers.join(", ")}**`
       : "clean";
+    const claims = r.inventedClaims?.length
+      ? `**${r.inventedClaims.join(", ")}**`
+      : "clean";
     lines.push(
       `| ${r.name} | ${r.atsScore ?? "—"} | ${r.pages ?? "—"} ` +
-        `| ${pct(r.mustIncludeCoverage ?? 0)} | ${honesty} | ${figures} | ${leaks} ` +
+        `| ${pct(r.mustIncludeCoverage ?? 0)} | ${honesty} | ${figures} | ${claims} | ${leaks} ` +
         `| ${r.iterations} | ${fillCell(r)} | ${secs(r.ms)} |`,
     );
   }
@@ -340,6 +363,7 @@ export function generationReport(
         `| ${pct(avg((r) => r.mustIncludeCoverage ?? 0))} ` +
         `| ${results.reduce((s, r) => s + (r.honestyViolations?.length ?? 0), 0)} total ` +
         `| ${results.reduce((s, r) => s + (r.inventedNumbers?.length ?? 0), 0)} total ` +
+        `| ${results.reduce((s, r) => s + (r.inventedClaims?.length ?? 0), 0)} total ` +
         `| ${results.reduce((s, r) => s + (r.placeholderLeaks?.length ?? 0), 0)} total ` +
         `| ${avg((r) => r.iterations ?? 0).toFixed(1)} ` +
         `| ${movable.length ? pct(movable.reduce((s, r) => s + (r.fill ?? 0), 0) / movable.length) : "—"} (${movable.length} movable) ` +

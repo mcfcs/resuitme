@@ -149,7 +149,7 @@ describe("aggregatedReport", () => {
   it("prints mean ± spread per case", () => {
     const out = aggregatedReport(runs, "m");
     expect(out).toContain(
-      "| b | 100 ±0 | 3/3 | 100% ±0 | 0 | 0 | 0 | 1.0 | 85% ±2 |",
+      "| b | 100 ±0 | 3/3 | 100% ±0 | 0 | 0 | 0 | 0 | 1.0 | 85% ±2 |",
     );
   });
 

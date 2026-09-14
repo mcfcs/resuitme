@@ -55,6 +55,7 @@ export type AggregatedCase = {
   // Totals across runs — never averaged, one hit is a real finding.
   honestyViolations: number;
   inventedNumbers: number;
+  inventedClaims: number;
   placeholderLeaks: number;
   criticalFindings: number;
   expandPasses: number;
@@ -143,6 +144,7 @@ export function aggregateRuns(runs: GenerationResult[][]): AggregatedCase[] {
       ).length,
       honestyViolations: total((r) => r.honestyViolations?.length),
       inventedNumbers: total((r) => r.inventedNumbers?.length),
+      inventedClaims: total((r) => r.inventedClaims?.length),
       placeholderLeaks: total((r) => r.placeholderLeaks?.length),
       criticalFindings: total((r) => r.criticalFindings?.length),
       expandPasses: total((r) => r.expandPasses),
@@ -203,9 +205,9 @@ export function aggregatedReport(
   lines.push(`### Generation eval: \`${label}\` — ${n} runs per case`);
   lines.push("");
   lines.push(
-    "| Case | ATS | 1-page | must_include | Honesty | Figures | Placeholders | Trims | Fill |",
+    "| Case | ATS | 1-page | must_include | Honesty | Figures | Claims | Placeholders | Trims | Fill |",
   );
-  lines.push("| --- | --- | --- | --- | --- | --- | --- | --- | --- |");
+  lines.push("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |");
 
   for (const c of cases) {
     const runsNote = c.okRuns < c.runs ? ` (${c.okRuns}/${c.runs} ok)` : "";
@@ -215,7 +217,7 @@ export function aggregatedReport(
     lines.push(
       `| ${c.name}${runsNote} | ${scoreCell(c.atsScore)} | ${c.onePage}/${c.okRuns} ` +
         `| ${pctCell(c.mustIncludeCoverage)} | ${countCell(c.honestyViolations)} ` +
-        `| ${countCell(c.inventedNumbers)} | ${countCell(c.placeholderLeaks)} ` +
+        `| ${countCell(c.inventedNumbers)} | ${countCell(c.inventedClaims)} | ${countCell(c.placeholderLeaks)} ` +
         `| ${c.iterations ? c.iterations.mean.toFixed(1) : "—"} | ${fill} |`,
     );
   }
@@ -238,6 +240,7 @@ export function aggregatedReport(
         `| ${pctCell(stat(suiteMeans(runs, (r) => r.mustIncludeCoverage)))} ` +
         `| ${sum((c) => c.honestyViolations)} total ` +
         `| ${sum((c) => c.inventedNumbers)} total ` +
+        `| ${sum((c) => c.inventedClaims)} total ` +
         `| ${sum((c) => c.placeholderLeaks)} total ` +
         `| ${stat(suiteMeans(runs, (r) => r.iterations))?.mean.toFixed(1) ?? "—"} ` +
         `| ${movableCount ? pctCell(stat(suiteMeans(runs, (r) => r.fill, movable))) : "—"} (${movableCount} movable) ` +

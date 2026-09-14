@@ -115,6 +115,7 @@ opinion of a résumé is exactly the thing that cannot be verified.
 | `must_include` coverage | Did the analyzer's ranked picks survive into the output?                          |
 | Honesty violations      | Did a disclaimed keyword appear anyway? Any hit is a contract breach.             |
 | Figures                 | Quantities in the output that the candidate's material does not support.          |
+| Claims                  | Leadership, scale, seniority or duration claims the material does not support.    |
 | Placeholder leaks       | The prompt promises zero; nothing else checks.                                    |
 | Trims                   | Proxy for how well `targetChars` is calibrated for the layout.                    |
 | Fill / effective fill   | How full the page is, against the budget and against what the source could reach. |
@@ -238,6 +239,40 @@ as grounded. Two rules earn their complexity, both from live-pipeline runs:
 
 Turning the check on immediately caught more than percentages: on one run the
 model **invented a phone number** for a candidate whose profile has none.
+
+### Unsupported claims
+
+The numeric check catches an invented **quantity**. It cannot catch an
+invented **quality**: _"led a team"_, _"at scale"_, _"cross-functional"_,
+_"5+ years of experience"_ pass every other gate because the surrounding words
+really are the candidate's — only the leadership, scope, seniority or duration
+is made up. Measured on the fixture with the sparsest source, the expand
+planner proposed _"Oversaw payment collection"_ for a profile that says
+_"Managed"_, and the quote check caught it only because the quote was
+fabricated too.
+
+`lib/ats/claim-check.ts` is the sibling of the numeric check: four kinds of
+claim, each an explicit list, each grounded through an explicit synonym map
+(_"Team Leader"_ in the source grounds _"led"_ in the output; _"management"_
+grounds _"managed"_). Duration and team-size claims need the figure and the
+noun **together** in the source, because a bare "5" anywhere already satisfies
+the numeric check and must not satisfy "5+ years". Conservative in the same
+direction as its sibling: anything ambiguous is grounded, `sampleresume.tex`
+produces zero findings against itself, and so does every built-in template.
+
+`/api/build` runs both checks on the first draft, retries **once** naming every
+offender, keeps whichever draft invents less of both, and then — because a
+prompt can only ask — strips in code whatever survived: a leading
+_"Led a team to design X"_ re-heads to _"Designed X"_, a scope word is deleted,
+an invented phone number goes with its separator, a _"by 15%"_ goes with its
+preposition. A bullet no rule can rescue is dropped whole. Everything removed
+is reported back as `softened`, which the metrics panel offers to the user to
+confirm in their own words; a confirmed claim is saved to the profile and
+grounds itself from then on.
+
+The eval reports what is left in the **Claims** column as `kind:trigger`
+(`leadership:led`, `duration:5 years`). Like figures and honesty violations it
+is a total across runs, never a mean.
 
 ### Negative result: prompt-level fill pressure fabricates
 

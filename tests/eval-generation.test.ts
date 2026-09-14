@@ -67,7 +67,9 @@ describe("generationReport", () => {
   it("renders a markdown table with a mean row", () => {
     const out = generationReport([base], "test-model");
     expect(out).toContain("| Case | ATS | Pages |");
-    expect(out).toContain("| case-a | 98 | 1 | 100% | clean | clean | none |");
+    expect(out).toContain(
+      "| case-a | 98 | 1 | 100% | clean | clean | clean | none |",
+    );
     expect(out).toContain("**mean**");
   });
 
