@@ -9,7 +9,7 @@ commands to re-verify are given so you can distrust it cheaply.
 
 ```
 branch        main, working tree CLEAN
-HEAD          9b2bf90  Add session handoff and a starting prompt for the next session
+HEAD          the handoff commits themselves are the tip; see `git log --oneline -8`
 tests         393 passing (14 files)
 typecheck     clean          lint clean          prettier clean
 deployment    http://100.70.66.3:5581  (HTTP 200, live over Tailscale)

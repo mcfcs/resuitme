@@ -18,8 +18,8 @@ measured and reverted.
 Verify the starting state before you change anything:
   git log --oneline -5 && git status --short
   npx tsc --noEmit && npx vitest run
-Expected: HEAD 9b2bf90, clean tree, 393 tests passing. If that does not match,
-say so before proceeding.
+Expected: a clean tree, 393 tests passing, and the handoff commits at the tip.
+If that does not match, say so before proceeding rather than working around it.
 
 == THE ONE PRINCIPLE ==
 lib/prompts/build.ts ALREADY forbids fabrication in rules 1 and 2. The model
